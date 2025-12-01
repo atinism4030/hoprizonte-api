@@ -73,7 +73,3 @@ export enum EIndustries {
   SHERBIME_KONSULENCE = "sherbime_konsulence"
 }
 
-
-export interface IIndustry {
-
-}

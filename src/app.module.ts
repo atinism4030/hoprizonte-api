@@ -16,6 +16,9 @@ import { ProjectService } from './services/project.service';
 import { AccountSchema } from './models/Account.model';
 import { TestingController } from './controllers/testing.controller';
 import { TestingService } from './services/testing.service';
+import { IndustrySchema } from './models/industry.model';
+import { IndustryController } from './controllers/industry.controller';
+import { IndustryService } from './services/industry.service';
 
 @Module({
   imports: [
@@ -29,6 +32,7 @@ import { TestingService } from './services/testing.service';
       inject: [ConfigService],
     }),
     MongooseModule.forFeature([{name: "Account", schema:AccountSchema}]),
+    MongooseModule.forFeature([{name: "Industry", schema:IndustrySchema}]),
     // MongooseModule.forFeature([{name: "Story", schema:}]),
     // MongooseModule.forFeature([{name: "Project", schema:}]),
     ScheduleModule.forRoot(),
@@ -39,7 +43,8 @@ import { TestingService } from './services/testing.service';
     AccountController,
     StoryController,
     ProjectController,
-    TestingController
+    TestingController,
+    IndustryController
   ],
 
   providers: [
@@ -47,7 +52,8 @@ import { TestingService } from './services/testing.service';
     AccountService,
     StoryService,
     ProjectService,
-    TestingService
+    TestingService,
+    IndustryService
   ],
 })
 export class AppModule {}
