@@ -14,7 +14,7 @@ export class AccountService {
 
   async createAccount(createAccountDto: any, type: EAccountType) {
     const salt = await bcrypt.genSaltSync(10);
-    console.log(createAccountDto);
+    console.log({createAccountDto});
     
     const hashedPassword = await bcrypt.hashSync(createAccountDto.data.password, salt);
 
@@ -30,7 +30,7 @@ export class AccountService {
   }
 
   async fetchAcocunts(type: EAccountType) {
-    const accounts = await this.accountModel.find({type: type}).select("-password");
+    const accounts = await this.accountModel.find({type: type}).select("-password").populate("industries");
     return accounts;
   }
 

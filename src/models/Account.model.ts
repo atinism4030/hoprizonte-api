@@ -10,7 +10,7 @@ export const AccountSchema = new mongoose.Schema({
     password: {type:String,required:true},
     phone: {type:String,required:true},
     description: {type:String,required:true},
-    industries: [{type:String, enum: Object.values(EIndustries)}],
+    industries: [{type:mongoose.Schema.Types.ObjectId, ref:"Industry"}],
     working_hours: [{type:String}],
     nr_of_workers: {type:Number},
     images: [{type:String}],

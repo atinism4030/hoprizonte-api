@@ -1,6 +1,7 @@
 import { Document, ObjectId } from "mongoose";
 import { EIndustries } from "./industries.types";
 import { IService } from "./services.types";
+import { IIndustry } from "./industry.types";
 
 export interface IAccount extends Document {
         name: string,
@@ -9,7 +10,7 @@ export interface IAccount extends Document {
         password: string,
         phone: string,
         description: string,
-        industries?: EIndustries[],
+        industries?: IIndustry[],
         working_hours?: string[],
         nr_of_workers?: number,
         images?: string[],
