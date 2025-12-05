@@ -16,7 +16,7 @@ import {
   ApiOperation,
 } from '@nestjs/swagger';
 import { type ObjectId } from 'mongoose';
-import { CreateAccountDTO, LoginDTO } from 'src/DTO/account.dto';
+import { CreateAccountDTO, CreateUserAccountDTO, LoginDTO } from 'src/DTO/account.dto';
 import { AccountService } from 'src/services/account.service';
 import { EAccountType } from 'src/types/account.types';
 
@@ -46,7 +46,7 @@ export class AccountController {
   @ApiOperation({ summary: 'Create a new company account' })
   @ApiBody({ type: CreateAccountDTO })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
-  async createUserAccount(@Body() data: CreateAccountDTO) {
+  async createUserAccount(@Body() data: CreateUserAccountDTO) {
     const response = await this.accountService.createAccount(
       data,
       EAccountType.USER,

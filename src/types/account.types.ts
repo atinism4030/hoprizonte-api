@@ -4,7 +4,7 @@ import { IService } from "./services.types";
 import { IIndustry } from "./industry.types";
 
 export interface IAccount extends Document {
-        name: string,
+        name?: string,
         address?: string,
         email: string,
         password: string,
@@ -27,6 +27,8 @@ export interface IAccount extends Document {
             website: string,
         }
     ],
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export type AccountType = "USER" | "COMPANY";

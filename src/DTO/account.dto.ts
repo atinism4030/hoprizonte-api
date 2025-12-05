@@ -115,6 +115,17 @@ export class CreateAccountDTO {
     social_media_links: []
 }
 
+export class CreateUserAccountDTO {
+
+    @ApiProperty({ example: "info@timimetal.com" })
+    @IsEmail()
+    email: string;
+
+    @ApiProperty({ example: "password123" })
+    @IsString()
+    password: string;
+}
+
 
 export class LoginDTO {
 

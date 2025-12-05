@@ -4,12 +4,12 @@ import { EIndustries } from "src/types/industries.types";
 import jwt from "jsonwebtoken";
 
 export const AccountSchema = new mongoose.Schema({
-    name: {type:String,required:true},
+    name: {type:String},
     address: {type:String},
     email: {type:String,required:true},
     password: {type:String,required:true},
-    phone: {type:String,required:true},
-    description: {type:String,required:true},
+    phone: {type:String},
+    description: {type:String},
     industries: [{type:mongoose.Schema.Types.ObjectId, ref:"Industry"}],
     working_hours: [{type:String}],
     nr_of_workers: {type:Number},
@@ -40,7 +40,7 @@ export const AccountSchema = new mongoose.Schema({
             website: String,
         }
     ],
-})
+}, {timestamps: true})
 
 AccountSchema.methods.generateAuthToken = function (data: Partial<IAccount>) {
     data.password = undefined;

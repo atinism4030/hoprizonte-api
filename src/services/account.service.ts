@@ -16,10 +16,10 @@ export class AccountService {
     const salt = await bcrypt.genSaltSync(10);
     console.log({createAccountDto});
     
-    const hashedPassword = await bcrypt.hashSync(createAccountDto.data.password, salt);
+    const hashedPassword = await bcrypt.hashSync(createAccountDto.password, salt);
 
     const payload = {
-      ...createAccountDto.data,
+      ...createAccountDto,
       type,
       password: hashedPassword
     }
@@ -30,7 +30,7 @@ export class AccountService {
   }
 
   async fetchAcocunts(type: EAccountType) {
-    const accounts = await this.accountModel.find({type: type}).select("-password").populate("industries");
+    const accounts = await this.accountModel.find({type: type}).select("-password").populate("industries").sort({createdAt: "desc"});
     return accounts;
   }
 
@@ -39,6 +39,7 @@ export class AccountService {
       console.log({loginDTO});
       
       const account = await this.accountModel.findOne({email: loginDTO.email});
+      console.log({account});
       if(!account) {
         return {
           data: null,
@@ -46,7 +47,16 @@ export class AccountService {
         }
       }
 
-      const validPassword = await bcrypt.compare(account.password, loginDTO.password);
+      
+      let validPassword = false;
+      if(account.type === "COMPANY") {
+        validPassword = (account.password == loginDTO.password)
+      } else {
+        validPassword = await bcrypt.compareSync(loginDTO.password, account.password);
+      }
+      
+      console.log({validPassword});
+      
       if(!validPassword) {
         return {
           data: null,
@@ -55,6 +65,8 @@ export class AccountService {
       }
 
       const token = await generateAuthToken(account);
+      console.log({token});
+      
       
       return {
         data: token,
