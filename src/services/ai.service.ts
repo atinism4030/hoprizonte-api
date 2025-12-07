@@ -2,28 +2,42 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { Readable } from 'stream';
 
+interface StreamPrompt {
+  system: string;
+  user: string;
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly apiUrl = 'https://api.mistral.ai/v1/chat/completions';
 
-  async stream(prompt: string, onData: (chunk: string) => void) {
+  async stream(prompt: StreamPrompt, onData: (chunk: string) => void) {
     const body = {
       model: 'mistral-large-latest',
-      messages: [{ role: 'user', content: prompt }],
-      stream: true
+      stream: true,
+      messages: [
+        {
+          role: 'system',
+          content: prompt.system,
+        },
+        {
+          role: 'user',
+          content: prompt.user,
+        },
+      ],
     };
 
     const headers = {
-      'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+      'Content-Type': 'application/json',
     };
 
     try {
       const response = await axios.post(this.apiUrl, body, {
         headers,
         responseType: 'stream',
-        timeout: 60000
+        timeout: 60000,
       });
 
       const stream: Readable = response.data;
@@ -39,7 +53,7 @@ export class AiService {
 
           for (const line of lines) {
             const trimmed = line.trim();
-            if (!trimmed || trimmed === '') continue;
+            if (!trimmed) continue;
 
             if (trimmed.startsWith('data: ')) {
               const data = trimmed.substring(6);
@@ -55,7 +69,7 @@ export class AiService {
                 if (content !== undefined && content !== null) {
                   onData(JSON.stringify(parsed));
                 }
-              } catch (e) {
+              } catch (e: any) {
                 this.logger.warn(`Parse error: ${e.message}`);
               }
             }
@@ -64,12 +78,9 @@ export class AiService {
 
         stream.on('end', () => {
           if (buffer.trim()) {
-            console.log({ buffer });
             const trimmed = buffer.trim();
-            console.log({ trimmed });
             if (trimmed.startsWith('data: ')) {
               const data = trimmed.substring(6);
-              console.log({ data });
 
               if (data !== '[DONE]') {
                 try {
@@ -78,7 +89,7 @@ export class AiService {
                   if (content !== undefined && content !== null) {
                     onData(JSON.stringify(parsed));
                   }
-                } catch (e) {
+                } catch (e: any) {
                   this.logger.warn(`Final parse error: ${e.message}`);
                 }
               }
@@ -92,7 +103,7 @@ export class AiService {
           reject(err);
         });
       });
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Request error: ${error.message}`);
       throw error;
     }

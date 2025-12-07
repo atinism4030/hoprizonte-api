@@ -19,7 +19,7 @@ export const AccountSchema = new mongoose.Schema({
         {
             name: {type:String},
             icon: {type:String},
-            price: {type:Number},
+            price: {type:String},
         }
     ],
     type: {type:String, enum: Object.values(EAccountType) , required:true},

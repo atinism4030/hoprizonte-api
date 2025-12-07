@@ -71,14 +71,14 @@ export class CreateAccountDTO {
             properties: {
                 name: { type: "string" },
                 icon: { type: "string" },
-                price: { type: "number" }
+                price: { type: "string" }
             }
         },
         example: [
             {
                 name: "LGS House Build",
                 icon: "lgs",
-                price: 150
+                price: "120 EUR per meter katror, nese totali i siperfaqes eshte mbi 1000 m2 atehere cmimi eshte 110 EUR/m2"
             }
         ]
     })

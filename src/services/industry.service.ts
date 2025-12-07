@@ -23,17 +23,23 @@ export class IndustryService {
     }
 
 
-  async getAll() {
+  async getAll(select?: string): Promise<IIndustry[]> {
     try {
-        const industries = await this.industryModel.find({});
-        console.log({industries});
-        
-        return industries;
+      const query = this.industryModel.find({});
+
+      if (select) {
+        query.select(select);
+      }
+
+      const industries = (await query.exec()) as unknown as IIndustry[];
+
+      return industries;
     } catch (error) {
-        console.log({error});
-        throw new InternalServerErrorException();
+      console.log({ error });
+      throw new InternalServerErrorException();
     }
   }
+
 
   async delete(id: ObjectId) {
     try {
