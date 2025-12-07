@@ -19,6 +19,9 @@ import { TestingService } from './services/testing.service';
 import { IndustrySchema } from './models/industry.model';
 import { IndustryController } from './controllers/industry.controller';
 import { IndustryService } from './services/industry.service';
+import { AiController } from './controllers/ai.controller';
+import { AiService } from './services/ai.service';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -31,11 +34,12 @@ import { IndustryService } from './services/industry.service';
       }),
       inject: [ConfigService],
     }),
-    MongooseModule.forFeature([{name: "Account", schema:AccountSchema}]),
-    MongooseModule.forFeature([{name: "Industry", schema:IndustrySchema}]),
+    MongooseModule.forFeature([{ name: "Account", schema: AccountSchema }]),
+    MongooseModule.forFeature([{ name: "Industry", schema: IndustrySchema }]),
     // MongooseModule.forFeature([{name: "Story", schema:}]),
     // MongooseModule.forFeature([{name: "Project", schema:}]),
     ScheduleModule.forRoot(),
+    HttpModule
   ],
 
   controllers: [
@@ -44,7 +48,8 @@ import { IndustryService } from './services/industry.service';
     StoryController,
     ProjectController,
     TestingController,
-    IndustryController
+    IndustryController,
+    AiController
   ],
 
   providers: [
@@ -53,7 +58,8 @@ import { IndustryService } from './services/industry.service';
     StoryService,
     ProjectService,
     TestingService,
-    IndustryService
+    IndustryService,
+    AiService
   ],
 })
-export class AppModule {}
+export class AppModule { }
