@@ -35,7 +35,7 @@ export class AiService {
     try {
       const response = await axios.post(this.apiUrl, body, {
         headers,
-        timeout: 60000,
+        timeout: 600000,
       });
 
       const content = response.data.choices?.[0]?.message?.content;
