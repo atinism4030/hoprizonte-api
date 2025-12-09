@@ -1,5 +1,4 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
-import { type Response } from 'express';
+import { Controller, Get, Query } from '@nestjs/common';
 import { AccountService } from 'src/services/account.service';
 import { AiService } from 'src/services/ai.service';
 import { IndustryService } from 'src/services/industry.service';
@@ -13,11 +12,10 @@ export class AiController {
     private readonly accountService: AccountService,
   ) {}
 
-  @Get('stream')
-  async stream(@Query('prompt') prompt: string, @Res() res: Response) {
+  @Get('generate')
+  async generate(@Query('prompt') prompt: string) {
     if (!prompt) {
-      res.status(400).json({ error: 'Prompt is required' });
-      return;
+      return { error: 'Prompt is required' };
     }
 
     const industries = await this.industryService.getAll('name');
@@ -25,7 +23,7 @@ export class AiController {
       EAccountType.COMPANY,
     );
 
-const baseSystemPrompt = `
+    const baseSystemPrompt = `
 Ti je "Horizonte AI", asistenti inteligjent për planifikim të ndërtimit dhe renovimeve në Maqedoninë e Veriut dhe Ballkan.
 
 Detyra jote është të krijosh një plan teknik, realist dhe të zbatueshëm bazuar në kërkesën e përdoruesit.
@@ -160,9 +158,6 @@ TI NUK JE CHATBOT.
 PËRGJIGJU VETËM NË TON FORMAT.
 `;
 
-
-
-
     const systemPromptWithData = `
 ${baseSystemPrompt}
 
@@ -178,15 +173,19 @@ ${JSON.stringify(companies)}
       user: prompt,
     };
 
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    await this.aiService.stream(fullPrompt, (chunk) => {
-      res.write(`data: ${chunk}\n\n`);
-    });
-
-    res.end();
+    try {
+      const response = await this.aiService.generate(fullPrompt);
+      
+      return {
+        response: response,
+        success: true,
+      };
+    } catch (error) {
+      console.error('AI generation error:', error);
+      return {
+        error: 'Gabim gjatë përpunimit të kërkesës',
+        success: false,
+      };
+    }
   }
 }
