@@ -7,6 +7,27 @@ interface Prompt {
   user: string;
 }
 
+// Section keys in order they appear in the JSON response
+const SECTION_ORDER = [
+  'project',
+  'phases',
+  'tasks',
+  'materials_summary',
+  'risk_analysis',
+  'budget_tips',
+  'text_response',
+];
+
+const SECTION_STATUS_MESSAGES: Record<string, string> = {
+  project: 'Duke definuar fazat e punës...',
+  phases: 'Duke detajuar detyrat teknike...',
+  tasks: 'Duke llogaritur materialet...',
+  materials_summary: 'Duke analizuar rreziqet...',
+  risk_analysis: 'Duke përgatitur rekomandimet...',
+  budget_tips: 'Duke finalizuar...',
+  text_response: '',
+};
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -53,6 +74,10 @@ export class AiService {
     }
   }
 
+  /**
+   * Streams AI response and emits complete sections as they finish.
+   * Each emission contains: {section, data, nextStatus}
+   */
   generateStream(prompt: Prompt): Observable<any> {
     return new Observable((observer) => {
       const body = {
@@ -75,6 +100,9 @@ export class AiService {
         'Content-Type': 'application/json',
       };
 
+      let fullContent = '';
+      const emittedSections = new Set<string>();
+
       axios
         .post(this.apiUrl, body, {
           headers,
@@ -92,6 +120,13 @@ export class AiService {
 
             for (const line of lines) {
               if (line.includes('[DONE]')) {
+                // Emit any remaining content as final
+                if (fullContent.trim()) {
+                  observer.next({
+                    type: 'complete',
+                    fullContent: fullContent,
+                  });
+                }
                 observer.complete();
                 return;
               }
@@ -102,7 +137,36 @@ export class AiService {
                   const json = JSON.parse(jsonStr);
                   const content = json.choices?.[0]?.delta?.content;
                   if (content) {
-                    observer.next({ data: content });
+                    fullContent += content;
+
+                    // Check for completed sections
+                    for (const sectionKey of SECTION_ORDER) {
+                      if (emittedSections.has(sectionKey)) continue;
+
+                      const sectionComplete = this.isSectionComplete(
+                        fullContent,
+                        sectionKey,
+                      );
+                      if (sectionComplete) {
+                        const sectionData = this.extractSection(
+                          fullContent,
+                          sectionKey,
+                        );
+                        if (sectionData !== null) {
+                          emittedSections.add(sectionKey);
+
+                          const nextStatus =
+                            SECTION_STATUS_MESSAGES[sectionKey] || '';
+
+                          observer.next({
+                            type: 'section',
+                            section: sectionKey,
+                            data: sectionData,
+                            nextStatus: nextStatus,
+                          });
+                        }
+                      }
+                    }
                   }
                 } catch (e) {
                   // ignore parse errors for partial chunks
@@ -112,6 +176,11 @@ export class AiService {
           });
 
           stream.on('end', () => {
+            // Final emission with complete content
+            observer.next({
+              type: 'complete',
+              fullContent: fullContent,
+            });
             observer.complete();
           });
 
@@ -123,5 +192,139 @@ export class AiService {
           observer.error(err);
         });
     });
+  }
+
+  /**
+   * Checks if a section is complete in the JSON string.
+   */
+  private isSectionComplete(content: string, sectionKey: string): boolean {
+    const pattern = `"${sectionKey}"`;
+    const startIndex = content.indexOf(pattern);
+    if (startIndex === -1) return false;
+
+    const colonIndex = content.indexOf(':', startIndex + pattern.length);
+    if (colonIndex === -1) return false;
+
+    // Find the start of the value
+    let valueStart = colonIndex + 1;
+    while (valueStart < content.length && /\s/.test(content[valueStart])) {
+      valueStart++;
+    }
+
+    if (valueStart >= content.length) return false;
+
+    const firstChar = content[valueStart];
+
+    // For text_response (string value)
+    if (sectionKey === 'text_response') {
+      if (firstChar !== '"') return false;
+      // Find closing quote (not escaped)
+      let i = valueStart + 1;
+      while (i < content.length) {
+        if (content[i] === '"' && content[i - 1] !== '\\') {
+          return true;
+        }
+        i++;
+      }
+      return false;
+    }
+
+    // For object or array values
+    const openChar = firstChar;
+    const closeChar = openChar === '{' ? '}' : openChar === '[' ? ']' : null;
+    if (!closeChar) return false;
+
+    let depth = 0;
+    let inString = false;
+
+    for (let i = valueStart; i < content.length; i++) {
+      const char = content[i];
+
+      if (char === '"' && (i === 0 || content[i - 1] !== '\\')) {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (char === '{' || char === '[') {
+        depth++;
+      } else if (char === '}' || char === ']') {
+        depth--;
+        if (depth === 0) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Extracts a complete section value from the JSON string.
+   */
+  private extractSection(content: string, sectionKey: string): any {
+    try {
+      const pattern = `"${sectionKey}"`;
+      const startIndex = content.indexOf(pattern);
+      if (startIndex === -1) return null;
+
+      const colonIndex = content.indexOf(':', startIndex + pattern.length);
+      if (colonIndex === -1) return null;
+
+      let valueStart = colonIndex + 1;
+      while (valueStart < content.length && /\s/.test(content[valueStart])) {
+        valueStart++;
+      }
+
+      const firstChar = content[valueStart];
+
+      // For text_response (string)
+      if (sectionKey === 'text_response') {
+        if (firstChar !== '"') return null;
+        let i = valueStart + 1;
+        while (i < content.length) {
+          if (content[i] === '"' && content[i - 1] !== '\\') {
+            const strValue = content.substring(valueStart, i + 1);
+            return JSON.parse(strValue);
+          }
+          i++;
+        }
+        return null;
+      }
+
+      // For object or array
+      const openChar = firstChar;
+      const closeChar = openChar === '{' ? '}' : openChar === '[' ? ']' : null;
+      if (!closeChar) return null;
+
+      let depth = 0;
+      let inString = false;
+
+      for (let i = valueStart; i < content.length; i++) {
+        const char = content[i];
+
+        if (char === '"' && (i === 0 || content[i - 1] !== '\\')) {
+          inString = !inString;
+          continue;
+        }
+
+        if (inString) continue;
+
+        if (char === '{' || char === '[') {
+          depth++;
+        } else if (char === '}' || char === ']') {
+          depth--;
+          if (depth === 0) {
+            const valueStr = content.substring(valueStart, i + 1);
+            return JSON.parse(valueStr);
+          }
+        }
+      }
+
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 }
