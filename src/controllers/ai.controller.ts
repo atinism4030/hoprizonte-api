@@ -72,7 +72,7 @@ export class AiController {
       },
       complete: () => {
         res.write('data: [DONE]\n\n');
-        res.end();
+        res.end();    
       },
     });
   }
