@@ -24,6 +24,7 @@ import { AiService } from './services/ai.service';
 import { HttpModule } from '@nestjs/axios';
 import { StorySchema } from './models/Story.model';
 import { CloudinaryService } from './services/cloudinary.service';
+import { ProjectSchema } from './models/Project.model';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CloudinaryService } from './services/cloudinary.service';
     MongooseModule.forFeature([{ name: "Account", schema: AccountSchema }]),
     MongooseModule.forFeature([{ name: "Industry", schema: IndustrySchema }]),
     MongooseModule.forFeature([{name: "Story", schema: StorySchema}]),
+    MongooseModule.forFeature([{name: "Project", schema: ProjectSchema}]),
     // MongooseModule.forFeature([{name: "Project", schema:}]),
     ScheduleModule.forRoot(),
     HttpModule
