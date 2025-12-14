@@ -37,4 +37,10 @@ export class ProjectService {
     const project = await this.projectModel.findById(projectId).exec();
     return project ? project.toJSON() as IProject : null;
   }
+
+  async getUserProjects(userId: string) {
+    const projects = await this.projectModel.find({user_id: userId}).exec();
+    return projects;
+  }
+
 }

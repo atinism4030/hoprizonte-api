@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ProjectService } from 'src/services/project.service';
 
 @Controller('projects')
@@ -20,5 +20,10 @@ export class ProjectController {
       user_id,
       body.fullAiResponseJson,
     );
+  }
+
+  @Get("/:user_id")
+  async getUserProjects(@Param("user_id") user_id: string) {
+    await this.projectService.getUserProjects(user_id);
   }
 }
