@@ -23,15 +23,15 @@ import { EAccountType } from 'src/types/account.types';
 @ApiTags('Account')
 @Controller('account')
 export class AccountController {
-  constructor(private readonly accountService: AccountService) {}
+  constructor(private readonly accountService: AccountService) { }
 
   @Post('/create-company-account')
   @ApiOperation({ summary: 'Create a new company account' })
   @ApiBody({ type: CreateAccountDTO })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
   async createCompanyAccount(@Body() data: CreateAccountDTO) {
-    console.log({data});
-    
+    console.log({ data });
+
     const response = await this.accountService.createAccount(
       data,
       EAccountType.COMPANY,
@@ -100,5 +100,20 @@ export class AccountController {
     @Param('id') id: ObjectId,
   ) {
     return await this.accountService.deleteAccount(id);
+  }
+
+  @Get('/search/companies')
+  @ApiOperation({ summary: 'Search companies by name' })
+  @ApiQuery({ name: 'q', description: 'Search query' })
+  @ApiResponse({ status: 200, description: 'List of matching companies' })
+  async searchCompanies(
+    @Query('q') query: string,
+    @Query('limit') limit?: number,
+  ) {
+    const companies = await this.accountService.searchCompanies(query || '', limit || 10);
+    return {
+      message: 'Search results',
+      data: companies,
+    };
   }
 }
