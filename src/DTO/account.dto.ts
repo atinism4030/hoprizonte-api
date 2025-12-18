@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEmail, IsEnum, IsNumber, IsString } from "class-validator";
-import { IAccount, type AccountType } from "src/types/account.types";
+import { IsArray, IsEmail, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { IAccount, type PushToken, type AccountType } from "src/types/account.types";
 import { EIndustries } from "src/types/industries.types";
 import { IService } from "src/types/services.types";
 
@@ -112,7 +112,11 @@ export class CreateAccountDTO {
     // }] })
 
     @IsArray()
-    social_media_links: []
+    social_media_links: [];
+
+    @IsOptional()
+    @IsString()
+    push_token: PushToken;
 }
 
 export class CreateUserAccountDTO {
@@ -124,6 +128,10 @@ export class CreateUserAccountDTO {
     @ApiProperty({ example: "password123" })
     @IsString()
     password: string;
+
+    @IsOptional()
+    @IsString()
+    push_token: PushToken;
 }
 
 
@@ -136,4 +144,8 @@ export class LoginDTO {
     @ApiProperty({ example: "password123" })
     @IsString()
     password: string;
+    
+    @IsOptional()
+    @IsString()
+    push_token: PushToken;
 }

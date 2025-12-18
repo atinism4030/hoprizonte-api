@@ -21,7 +21,8 @@ export class AccountService {
     const payload = {
       ...createAccountDto,
       type,
-      password: hashedPassword
+      password: hashedPassword,
+      push_token: createAccountDto.push_token
     }
 
     const newAccount = this.accountModel.create(payload);
@@ -29,8 +30,8 @@ export class AccountService {
     return newAccount;
   }
 
-  async fetchAcocunts(type: EAccountType) {
-    const accounts = await this.accountModel.find({ type: type }).select("-password").populate("industries").sort({ createdAt: "desc" });
+  async fetchAcocunts(type: EAccountType, select?: string) {
+    const accounts = await this.accountModel.find({ type: type }).select(select ? select : "-password").populate("industries").sort({ createdAt: "desc" });
     return accounts;
   }
 
@@ -39,6 +40,12 @@ export class AccountService {
       console.log({ loginDTO });
 
       const account = await this.accountModel.findOne({ email: loginDTO.email });
+      const push_token_has_changed = account?.push_token !== loginDTO.push_token;
+
+      if(push_token_has_changed) { 
+        await this.accountModel.findByIdAndUpdate(account?._id, {push_token: loginDTO.push_token});
+      }
+      
       console.log({ account });
       if (!account) {
         return {

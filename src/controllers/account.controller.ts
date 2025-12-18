@@ -47,6 +47,8 @@ export class AccountController {
   @ApiBody({ type: CreateAccountDTO })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
   async createUserAccount(@Body() data: CreateUserAccountDTO) {
+    console.log({ data });
+
     const response = await this.accountService.createAccount(
       data,
       EAccountType.USER,

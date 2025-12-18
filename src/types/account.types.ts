@@ -27,10 +27,12 @@ export interface IAccount extends Document {
             website: string,
         }
     ],
+    push_token: PushToken;
     createdAt: Date;
     updatedAt: Date;
 }
 
+export type PushToken = string;
 export type AccountType = "USER" | "COMPANY";
 export enum EAccountType {
         USER = "USER",

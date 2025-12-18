@@ -40,6 +40,7 @@ export const AccountSchema = new mongoose.Schema({
             website: String,
         }
     ],
+    push_token: {type:String},
 }, {timestamps: true})
 
 AccountSchema.methods.generateAuthToken = function (data: Partial<IAccount>) {
