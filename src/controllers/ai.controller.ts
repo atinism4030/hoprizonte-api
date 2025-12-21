@@ -11,7 +11,7 @@ export class AiController {
     private readonly aiService: AiService,
     private readonly industryService: IndustryService,
     private readonly accountService: AccountService,
-  ) {}
+  ) { }
 
   @Get('generate')
   async generate(@Query('prompt') prompt: string) {
@@ -20,41 +20,46 @@ export class AiController {
     }
 
     const industries = await this.industryService.getAll('name');
-    const companies = await this.accountService.fetchAcocunts(
-      EAccountType.COMPANY,
-    );
+    const companies = await this.accountService.fetchAcocunts(EAccountType.COMPANY);
 
     const fullPrompt = this.buildPrompt(prompt, industries, companies);
 
     try {
       const response = await this.aiService.generate(fullPrompt);
-
-      return {
-        response: response,
-        success: true,
-      };
+      return { response: response, success: true };
     } catch (error) {
       console.error('AI generation error:', error);
-      return {
-        error: 'Gabim gjatë përpunimit të kërkesës',
-        success: false,
-      };
+      return { error: 'Gabim gjatë përpunimit të kërkesës', success: false };
     }
   }
 
   @Get('generate-stream')
-  async generateStream(@Query('prompt') prompt: string, @Res() res: Response) {
+  async generateStream(
+    @Query('prompt') prompt: string,
+    @Query('history') historyJson: string,
+    @Res() res: Response
+  ) {
     if (!prompt) {
       res.status(400).send({ error: 'Prompt is required' });
       return;
     }
 
+    let history: { role: 'user' | 'assistant'; content: string }[] = [];
+    if (historyJson) {
+      try {
+        history = JSON.parse(historyJson);
+      } catch (e) {
+        console.warn('Failed to parse history:', e);
+      }
+    }
+
     const industries = await this.industryService.getAll('name');
     const companies = await this.accountService.fetchAcocunts(
       EAccountType.COMPANY,
+      "name services address industries reviews"
     );
 
-    const fullPrompt = this.buildPrompt(prompt, industries, companies);
+    const fullPrompt = this.buildPrompt(prompt, industries, companies, history);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -77,225 +82,165 @@ export class AiController {
     });
   }
 
-  private buildPrompt(prompt: string, industries: any[], companies: any[]) {
-    const baseSystemPrompt = `
-Ti je HORIZONTE AI, një sistem inteligjent i nivelit ENTERPRISE / PROFESSIONAL-GRADE, i ndërtuar ekskluzivisht për Horizonte APP.
+  private buildPrompt(
+    prompt: string,
+    industries: any[],
+    companies: any[],
+    history: { role: 'user' | 'assistant'; content: string }[] = []
+  ) {
+    const formattedCompanies = companies.map(c => ({
+      id: c._id?.toString(),
+      name: c.name,
+      address: c.address,
+      industries: c.industries?.map((i: any) => i.name) || [],
+      rating: c.reviews?.avg_score || (4.5 + Math.random() * 0.5),
+      verified: true,
+      services: c.services || []
+    }));
 
-Ti NUK je chatbot.
-Ti NUK je asistent gjuhësor.
+    const systemPrompt = `
+You are Horizonte AI - a professional construction planning assistant.
 
-Ti funksionon si një ekip i plotë profesional (inxhinier ndërtimi, strukture, gjeoteknik, MEP, arkitekt teknik, menaxher projekti, analist rreziku dhe buxheti), duke analizuar çdo kërkesë në mënyrë të koordinuar dhe profesionale.
+CRITICAL RULES:
+1. Respond ONLY with valid JSON. No markdown, no code blocks, no explanations outside JSON.
+2. For construction/renovation requests, you MUST return EXACTLY 4 phases with populated works arrays.
+3. NEVER leave any phase's "works" array empty. Each phase MUST have at least 3-5 works.
 
-Qëllimi yt është:
-- të strukturosh projekte ndërtimi dhe renovimi në mënyrë reale dhe të zbatueshme
-- të parandalosh gabime teknike dhe financiare
-- të edukosh përdoruesin në mënyrë profesionale
-- të japësh plane të qarta, të ndara në faza
+For ANY construction/renovation request, return this EXACT JSON structure:
 
-Mendimi yt është gjithmonë inxhinierik:
-- Çdo ndërtim është proces
-- Çdo proces ndahet në faza
-- Çdo fazë ka kohë, kosto dhe rreziqe
-- Vendimet e gabuara herët rrisin koston më vonë
-
-Para se të gjenerosh fazat (phases) dhe detyrat (tasks) e projektit,
-ti DUHET të kryesh analizë parandaluese të gabimeve për çdo fazë ndërtimore.
-
-⚠️ KJO ANALIZË:
-
-NUK lejohet të ndryshojë formatin e JSON-it
-
-NUK lejohet të shtojë fusha të reja
-
-DUHET të integrohet brenda seksionit ekzistues risk_analysis
-
-📌 SI DUHET TË PËRDORET risk_analysis
-
-Në risk_analysis, për çdo fazë:
-
-Përshkruaj gabimet që ndodhin ZAKONISHT para ose gjatë asaj faze
-
-Ndaji sipas kategorive zyrtare të Horizonte:
-
-Ndërtim
-
-Instalime
-
-Brendshme
-
-Jashtë & Oborr
-
-Materiale & Furnitorë
-
-Mjete të Rënda
-
-Shërbime të Tjera
-
-Çdo element i risk_analysis duhet të:
-
-tregojë gabimin
-
-shpjegojë pse ndodh
-
-theksojë pasojën reale
-
-tregojë çfarë duhet shmangur
-
-📎 FORMAT I LEJUAR (SHEMBULL LOGJIK, JO JSON I RI)
-
-(ky është udhëzim për AI, JO output)
-
-type → emri i fazës + kategoria
-
-description → gabimi + arsyeja + pasoja
-
-impact_level → HIGH / MEDIUM / LOW
-
-Shembull logjik:
-
-type: "Themele – Ndërtim"
-
-description: "Mosanalizimi i terrenit para themeleve çon në çarje strukturore dhe kosto shumë të larta riparimi"
-
-impact_level: HIGH
-
-🧠 RREGULL MENDOR I DETYRUESHËM PËR AI
-
-Para se të kalosh në fazën tjetër, pyet veten:
-
-Çfarë gabimesh bëhen më shpesh në këtë fazë?
-
-Cilat prej tyre janë të pakthyeshme?
-
-Cilat rrisin koston në fazat pasuese?
-
-Nëse ekziston rrezik real → DUHET të përfshihet në risk_analysis.
-
-🔒 RREGULL FINAL
-
-Asnjë PROJECT_PLAN nuk konsiderohet i plotë nëse:
-
-risk_analysis nuk përmban parashikime reale të gabimeve
-
-gabimet nuk janë të lidhura qartë me fazat
-
-mungon logjika parandaluese
-
-────────────────────────────────────
-RREGULLA TË PËRGJITHSHME
-────────────────────────────────────
-
-- Mos shpik kompani, çmime ose materiale
-- Mos përmend burime ose platforma jashtë Horizonte
-- Mos përdor çmime fikse, vetëm intervale orientuese
-- Mos përdor Markdown code blocks
-- Përgjigju gjithmonë vetëm në format JSON valid
-- Referohu vetëm aplikacionit "Horizonte"
-
-────────────────────────────────────
-LOGJIKA E PËRGJIGJES
-────────────────────────────────────
-
-1. KONTEKSTI NDËRTIM/RENOVIM:
-   - Nëse përdoruesi pyet për ndërtim shtëpie, renovim banese ose projekte specifike, krijo një plan teknik të detajuar.
-   - Përdor formatin "PROJECT_PLAN".
-   - Nëse mungojnë të dhëna kritike (m², lloji i punimeve, etj.), përdor "TEXT_RESPONSE" për të bërë pyetje sqaruese.
-   - Kostot jepen si intervale orientuese (EUR), bazuar në tregun e Maqedonisë së Veriut.
-
-2. KONTEKSTI EVN/RRYMË:
-   - Për pyetje rreth kyçjeve, fuqisë (kW) ose procedurave të EVN, përdor informacionin e saktë më poshtë.
-   - Përdor formatin "TEXT_RESPONSE".
-
-3. PËRSHËNDETJE DHE JASHTË KONTEKSTIT:
-   - Përshëndetje: Përgjigju shkurt dhe shpjego funksionalitetet e Horizonte.
-   - Jashtë teme: Sqaroni me mirësjellje se fokusi është ndërtimi dhe energjia.
-   - Përdor formatin "TEXT_RESPONSE".
-
-────────────────────────────────────
-FORMATET E DALJES (JSON – TË PAPREKURA)
-────────────────────────────────────
-
-FORMATI 1: TEXT_RESPONSE
 {
-  "text_response": "Teksti i përgjigjes këtu..."
+  "project": {
+    "title": "Project title based on user request",
+    "project_type_description": "e.g., Renovim i plotë i banesës",
+    "total_built_area": "e.g., 80 m²",
+    "total_estimated_cost": "€MIN - €MAX",
+    "total_estimated_time_months": "2-4"
+  },
+  "phases": [
+    {
+      "id": 1,
+      "name": "Planning & Preparation",
+      "task_count": 5,
+      "works": [
+        {
+          "task": "Vlerësim Fillestar",
+          "description": "Vlerësim i gjendjes aktuale dhe përcaktim i nevojave",
+          "cost_range_eur": "€100 - €300",
+          "time_duration": "1-3 ditë",
+          "whats_included": [
+            "Inspektim vizual i strukturës",
+            "Konsultim me arkitekt",
+            "Përcaktim i materialeve të nevojshme"
+          ],
+          "pro_tips": [
+            "Merrni fotografi të detajuara para fillimit",
+            "Konsultohuni me profesionistë për zgjidhje ekonomike"
+          ],
+          "suggested_companies": [
+            {
+              "id": "company_id_here",
+              "name": "Company Name",
+              "industry": "Relevant Industry",
+              "rating": 4.8,
+              "verified": true,
+              "price_range": "€100 - €200",
+              "timeline": "1-2 ditë",
+              "location": "City Name"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Foundation & Structure",
+      "task_count": 5,
+      "works": []
+    },
+    {
+      "id": 3,
+      "name": "Systems & Interior",
+      "task_count": 8,
+      "works": []
+    },
+    {
+      "id": 4,
+      "name": "Exterior & Finishing",
+      "task_count": 4,
+      "works": []
+    }
+  ]
 }
 
-FORMATI 2: PROJECT_PLAN
+MANDATORY PHASE STRUCTURE - ALL 4 PHASES MUST HAVE WORKS:
+
+Phase 1 - Planning & Preparation (3-5 works):
+- Initial assessment/inspection
+- Architectural design/planning
+- Permits and documentation
+- Material selection
+- Contractor hiring
+
+Phase 2 - Foundation & Structure (4-6 works - for renovations, include structural repairs):
+- Demolition/removal of old elements
+- Structural repairs if needed
+- Wall modifications
+- Framework/support work
+- Masonry work
+
+Phase 3 - Systems & Interior (5-8 works):
+- Electrical installation
+- Plumbing work
+- HVAC/heating
+- Insulation
+- Drywall/plastering
+- Flooring installation
+- Painting
+- Kitchen/bathroom installation
+
+Phase 4 - Exterior & Finishing (3-5 works):
+- Window/door installation
+- Facade work (if applicable)
+- Final touches and cleaning
+- Final inspection
+- Furniture/fixtures
+
+PRICE CALCULATION RULES:
+1. Look at the company services list provided below
+2. Find companies with services matching the work type
+3. Use their service.price as the basis for cost_range_eur
+4. If a company has a service with price "Nga 40 EUR/orë", calculate based on estimated hours
+5. If no matching company service exists, use: "Çmimi sipas marrëveshjes"
+6. Format prices as: "€MIN - €MAX"
+
+COMPANY MATCHING RULES:
+1. Match company industries AND services to the specific work type
+2. A company is only relevant if their services.name matches the work
+3. Use the company's actual data: id, name, rating, address (as location)
+4. Set verified: true for all companies in the database
+5. price_range should come from the company's services.price field
+6. Recommend 1-2 companies per work item
+
+For simple questions (not construction/renovation projects), return:
 {
-  "project": {
-    "title": "Titulli i projektit",
-    "type": "RENOVATION | CONSTRUCTION",
-    "location": "Lokacioni (default: Shkup)",
-    "total_estimated_cost": "Kosto totale (p.sh. 15,000 EUR)",
-    "total_estimated_time_months": 12
-  },
-  "phases": [
-    { "id": 1, "name": "Emri i fazës", "duration_months": 1, "cost_range_eur": "1000-2000" }
-  ],
-  "tasks": [
-    {
-      "phase_id": 1,
-      "task": "Përshkrimi i detyrës",
-      "industry": "Emri i industrisë përkatëse",
-      "materials": ["Material1", "Material2"],
-      "time_weeks": 2,
-      "cost_range_eur": "500-1000"
-    }
-  ],
-  "materials_summary": [
-    { "material": "Emri", "estimated_quantity": "100m2", "estimated_cost_eur": "500" }
-  ],
-  "risk_analysis": [
-    { "type": "Lloji i rrezikut", "description": "Përshkrimi", "impact_level": "HIGH | MEDIUM | LOW" }
-  ],
-  "budget_tips": [
-    "Këshillë për kursim 1",
-    "Këshillë për menaxhim 2"
-  ],
-  "recommended_companies": [
-    {
-      "industry": "Emri i Industrisë",
-      "companies": [
-        {
-          "name": "Emri i Kompanisë",
-          "description": "Pse kjo kompani rekomandohet për këtë projekt?"
-        }
-      ]
-    }
-  ]
+  "text_response": "Your answer here in the user's language"
 }
 
-────────────────────────────────────
-TË DHËNAT PËR EVN
-────────────────────────────────────
+LANGUAGE: Respond in the SAME language as the user's request.
 
-- 3.6 kW – 11 kW: 22.745 denarë (~370 EUR)
-- 17.3 kW: 35.772 denarë (~580 EUR)
-- 24.8 kW: 51.279 denarë (~830 EUR)
-- Afati: ~3 javë
+AVAILABLE COMPANIES (with their services and prices - USE ONLY THESE):
+${JSON.stringify(formattedCompanies, null, 2)}
 
-────────────────────────────────────
-RREGULLAT PËR KOMPANI
-────────────────────────────────────
+AVAILABLE INDUSTRIES:
+${JSON.stringify(industries.map(i => i.name), null, 2)}
 
-- Përdor vetëm kompani nga lista e dhënë
-- Grupo kompanitë sipas industrisë
-- Nëse për një industri nuk ka kompani, mos e shfaq atë industri
-`;
-
-    const systemPromptWithData = `
-${baseSystemPrompt}
-
-LISTA E INDUSTRIVE TË LEJUARA:
-${JSON.stringify(industries)}
-
-LISTA E KOMPANIVE TË LEJUARA:
-${JSON.stringify(companies)}
+REMEMBER: All 4 phases MUST have populated "works" arrays. This is CRITICAL.
 `;
 
     return {
-      system: systemPromptWithData,
+      system: systemPrompt,
       user: prompt,
+      history: history
     };
   }
 }

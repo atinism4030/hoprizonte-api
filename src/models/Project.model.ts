@@ -14,6 +14,27 @@ const ProjectDetailsSchema = new mongoose.Schema({
   total_estimated_time_months: { type: Number },
 });
 
+const SuggestedCompanySchema = new mongoose.Schema({
+  id: { type: String },
+  name: { type: String },
+  industry: { type: String },
+  rating: { type: Number },
+  verified: { type: Boolean, default: true },
+  price_range: { type: String },
+  timeline: { type: String },
+  location: { type: String },
+});
+
+const WorkSchema = new mongoose.Schema({
+  task: { type: String },
+  description: { type: String },
+  cost_range_eur: { type: String },
+  time_duration: { type: String },
+  whats_included: [{ type: String }],
+  pro_tips: [{ type: String }],
+  suggested_companies: [{ type: SuggestedCompanySchema }],
+});
+
 const PhaseSchema = new mongoose.Schema({
   id: { type: Number, required: true },
   name: { type: String, required: true },
@@ -22,6 +43,7 @@ const PhaseSchema = new mongoose.Schema({
   status: { type: String, enum: ["not_started", "in_progress", "done"], default: "not_started" },
   start_date: { type: String },
   end_date: { type: String },
+  works: [{ type: WorkSchema }],
 });
 
 const TaskSchema = new mongoose.Schema({
@@ -30,11 +52,15 @@ const TaskSchema = new mongoose.Schema({
   industry: { type: String },
   materials: [{ type: String }],
   time_weeks: { type: Number },
+  time_duration: { type: String },
   cost_range_eur: { type: String },
+  description: { type: String },
+  whats_included: [{ type: String }],
+  pro_tips: [{ type: String }],
+  suggested_companies: [{ type: SuggestedCompanySchema }],
   status: { type: String, enum: ["not_started", "in_progress", "done"], default: "not_started" },
   assigned_company: { type: String },
   assigned_company_id: { type: mongoose.Schema.Types.ObjectId, ref: "Account" },
-  description: { type: String },
   agreed_price: { type: String },
   advance_paid: { type: String, default: "0" },
   total_paid: { type: String, default: "0" },

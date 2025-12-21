@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
-  IProjectPlanAI,
   IProject,
   UpdateTaskDTO,
   UpdatePhaseDTO,
@@ -23,24 +22,63 @@ export class ProjectService {
   ) { }
 
   async create(
-    projectPlan: IProjectPlanAI,
+    aiResponse: any,
     userId: string,
     fullAiResponseJson: string,
   ): Promise<IProject> {
-    // Add default subtasks to each task
-    const tasksWithSubtasks = projectPlan.tasks.map((task, index) => ({
-      ...task,
+    const phases = aiResponse.phases || [];
+    const project = aiResponse.project || {};
+
+    const formattedPhases = phases.map((phase: any, index: number) => ({
+      id: phase.id || index + 1,
+      name: phase.name,
+      duration_months: this.estimateDurationMonths(phase.works),
+      cost_range_eur: this.estimatePhaseCost(phase.works),
       status: 'not_started' as const,
-      subtasks: [
-        { id: `${index}-1`, title: 'Preparation', completed: false },
-        { id: `${index}-2`, title: 'Execution', completed: false },
-        { id: `${index}-3`, title: 'Cleanup', completed: false },
-      ]
+      works: phase.works || [],
     }));
 
+    const tasks: any[] = [];
+    phases.forEach((phase: any) => {
+      if (phase.works && Array.isArray(phase.works)) {
+        phase.works.forEach((work: any, workIndex: number) => {
+          tasks.push({
+            phase_id: phase.id,
+            task: work.task,
+            description: work.description,
+            cost_range_eur: work.cost_range_eur,
+            time_duration: work.time_duration,
+            time_weeks: this.parseDurationToWeeks(work.time_duration),
+            industry: work.suggested_companies?.[0]?.industry || '',
+            materials: [],
+            whats_included: work.whats_included || [],
+            pro_tips: work.pro_tips || [],
+            suggested_companies: work.suggested_companies || [],
+            status: 'not_started' as const,
+            subtasks: [
+              { id: `${phase.id}-${workIndex}-1`, title: 'Përgatitje', completed: false },
+              { id: `${phase.id}-${workIndex}-2`, title: 'Ekzekutim', completed: false },
+              { id: `${phase.id}-${workIndex}-3`, title: 'Përfundim', completed: false },
+            ]
+          });
+        });
+      }
+    });
+
     const projectToSave: Partial<IProject> = {
-      ...projectPlan,
-      tasks: tasksWithSubtasks,
+      project: {
+        title: project.title || 'Projekt i Ri',
+        type: project.project_type_description?.toLowerCase().includes('renovim') ? 'RENOVATION' : 'CONSTRUCTION',
+        location: 'Shkup',
+        total_estimated_cost: project.total_estimated_cost || '€0',
+        total_estimated_time_months: parseInt(project.total_estimated_time_months) || 6,
+      },
+      phases: formattedPhases,
+      tasks: tasks,
+      materials_summary: [],
+      risk_analysis: [],
+      budget_tips: [],
+      recommended_companies: [],
       user_id: userId,
       full_ai_response_json: fullAiResponseJson,
       total_spent: '0',
@@ -50,6 +88,57 @@ export class ProjectService {
     const savedProject = await createdProject.save();
 
     return savedProject.toJSON() as IProject;
+  }
+
+  private estimateDurationMonths(works: any[]): number {
+    if (!works || works.length === 0) return 1;
+    let totalWeeks = 0;
+    works.forEach(work => {
+      totalWeeks += this.parseDurationToWeeks(work.time_duration);
+    });
+    return Math.max(1, Math.ceil(totalWeeks / 4));
+  }
+
+  private estimatePhaseCost(works: any[]): string {
+    if (!works || works.length === 0) return '€0';
+    let minTotal = 0;
+    let maxTotal = 0;
+    works.forEach(work => {
+      const costs = this.parseCostRange(work.cost_range_eur);
+      minTotal += costs.min;
+      maxTotal += costs.max;
+    });
+    return `€${minTotal.toLocaleString()} - €${maxTotal.toLocaleString()}`;
+  }
+
+  private parseCostRange(costStr: string): { min: number; max: number } {
+    if (!costStr) return { min: 0, max: 0 };
+    const numbers = costStr.match(/[\d,]+/g);
+    if (!numbers || numbers.length === 0) return { min: 0, max: 0 };
+    const values = numbers.map(n => parseInt(n.replace(/,/g, '')) || 0);
+    return {
+      min: values[0] || 0,
+      max: values[1] || values[0] || 0
+    };
+  }
+
+  private parseDurationToWeeks(duration: string): number {
+    if (!duration) return 1;
+    const lowerDuration = duration.toLowerCase();
+    const numbers = duration.match(/\d+/g);
+    if (!numbers) return 1;
+    const firstNum = parseInt(numbers[0]) || 1;
+
+    if (lowerDuration.includes('ditë') || lowerDuration.includes('dite')) {
+      return Math.ceil(firstNum / 7);
+    }
+    if (lowerDuration.includes('javë') || lowerDuration.includes('jave')) {
+      return firstNum;
+    }
+    if (lowerDuration.includes('muaj')) {
+      return firstNum * 4;
+    }
+    return 1;
   }
 
   async findById(projectId: string): Promise<IProject | null> {
@@ -62,7 +151,6 @@ export class ProjectService {
     return projects;
   }
 
-  // Update entire project
   async updateProject(projectId: string, updates: Partial<IProject>): Promise<IProject | null> {
     const project = await this.projectModel.findByIdAndUpdate(
       projectId,
@@ -77,7 +165,6 @@ export class ProjectService {
     return project.toJSON() as IProject;
   }
 
-  // Update a specific task
   async updateTask(projectId: string, taskId: string, updates: UpdateTaskDTO): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -91,20 +178,16 @@ export class ProjectService {
       throw new NotFoundException('Task not found');
     }
 
-    // Update the specific task fields
     Object.keys(updates).forEach(key => {
       project.tasks[taskIndex][key] = updates[key];
     });
 
     await project.save();
-
-    // Recalculate total spent
     await this.recalculateTotalSpent(projectId);
 
     return this.findById(projectId);
   }
 
-  // Toggle subtask completion
   async toggleSubtask(projectId: string, taskId: string, subtaskId: string): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -124,10 +207,8 @@ export class ProjectService {
       throw new NotFoundException('Subtask not found');
     }
 
-    // Toggle the subtask completion
     project.tasks[taskIndex].subtasks[subtaskIndex].completed = !project.tasks[taskIndex].subtasks[subtaskIndex].completed;
 
-    // Check if all subtasks are completed, update task status
     const allCompleted = project.tasks[taskIndex].subtasks.every((s: ISubTask) => s.completed);
     const someCompleted = project.tasks[taskIndex].subtasks.some((s: ISubTask) => s.completed);
 
@@ -143,7 +224,6 @@ export class ProjectService {
     return this.findById(projectId);
   }
 
-  // Update a specific phase
   async updatePhase(projectId: string, phaseId: number, updates: UpdatePhaseDTO): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -165,7 +245,6 @@ export class ProjectService {
     return this.findById(projectId);
   }
 
-  // Add a new phase
   async addPhase(projectId: string, phase: AddPhaseDTO): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -173,12 +252,12 @@ export class ProjectService {
       throw new NotFoundException('Project not found');
     }
 
-    // Generate new phase ID
     const maxId = Math.max(...project.phases.map((p: any) => p.id), 0);
     const newPhase = {
       ...phase,
       id: maxId + 1,
       status: 'not_started',
+      works: [],
     };
 
     project.phases.push(newPhase);
@@ -187,7 +266,6 @@ export class ProjectService {
     return this.findById(projectId);
   }
 
-  // Delete a phase
   async deletePhase(projectId: string, phaseId: number): Promise<IProject | null> {
     const project = await this.projectModel.findByIdAndUpdate(
       projectId,
@@ -202,7 +280,6 @@ export class ProjectService {
     return project.toJSON() as IProject;
   }
 
-  // Update a specific material
   async updateMaterial(projectId: string, materialId: string, updates: UpdateMaterialDTO): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -224,7 +301,6 @@ export class ProjectService {
     return this.findById(projectId);
   }
 
-  // Add a new material
   async addMaterial(projectId: string, material: AddMaterialDTO): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -238,7 +314,6 @@ export class ProjectService {
     return this.findById(projectId);
   }
 
-  // Delete a material
   async deleteMaterial(projectId: string, materialId: string): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -252,7 +327,6 @@ export class ProjectService {
     return this.findById(projectId);
   }
 
-  // Add a new task
   async addTask(projectId: string, task: AddTaskDTO): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -265,9 +339,9 @@ export class ProjectService {
       ...task,
       status: 'not_started',
       subtasks: [
-        { id: `${taskCount}-1`, title: 'Preparation', completed: false },
-        { id: `${taskCount}-2`, title: 'Execution', completed: false },
-        { id: `${taskCount}-3`, title: 'Cleanup', completed: false },
+        { id: `${taskCount}-1`, title: 'Përgatitje', completed: false },
+        { id: `${taskCount}-2`, title: 'Ekzekutim', completed: false },
+        { id: `${taskCount}-3`, title: 'Përfundim', completed: false },
       ]
     };
 
@@ -277,7 +351,6 @@ export class ProjectService {
     return this.findById(projectId);
   }
 
-  // Delete a task
   async deleteTask(projectId: string, taskId: string): Promise<IProject | null> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -291,7 +364,6 @@ export class ProjectService {
     return this.findById(projectId);
   }
 
-  // Recalculate total spent based on all paid amounts
   async recalculateTotalSpent(projectId: string): Promise<void> {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -302,7 +374,6 @@ export class ProjectService {
     let totalSpent = 0;
     project.tasks.forEach((task: any) => {
       if (task.total_paid) {
-        // Parse the amount, removing currency symbols and commas
         const amount = parseFloat(task.total_paid.replace(/[^0-9.-]+/g, '')) || 0;
         totalSpent += amount;
       }
@@ -312,7 +383,6 @@ export class ProjectService {
     await project.save();
   }
 
-  // Get project statistics
   async getProjectStats(projectId: string) {
     const project = await this.projectModel.findById(projectId).exec();
 
@@ -326,7 +396,6 @@ export class ProjectService {
 
     const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    // Calculate budget
     const totalBudgetStr = project.project?.total_estimated_cost || '0';
     const totalBudget = parseFloat(totalBudgetStr.replace(/[^0-9.-]+/g, '')) || 0;
     const totalSpent = parseFloat(project.total_spent || '0');
