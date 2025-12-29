@@ -124,4 +124,30 @@ export class ProjectController {
   ) {
     return await this.projectService.deleteMaterial(project_id, material_id);
   }
+
+  // Spending endpoints
+  @Post("/:project_id/spendings")
+  async addSpending(
+    @Param("project_id") project_id: string,
+    @Body() spending: any,
+  ) {
+    return await this.projectService.addSpending(project_id, spending);
+  }
+
+  @Patch("/:project_id/spendings/:spending_id")
+  async updateSpending(
+    @Param("project_id") project_id: string,
+    @Param("spending_id") spending_id: string,
+    @Body() updates: any,
+  ) {
+    return await this.projectService.updateSpending(project_id, spending_id, updates);
+  }
+
+  @Delete("/:project_id/spendings/:spending_id")
+  async deleteSpending(
+    @Param("project_id") project_id: string,
+    @Param("spending_id") spending_id: string,
+  ) {
+    return await this.projectService.deleteSpending(project_id, spending_id);
+  }
 }

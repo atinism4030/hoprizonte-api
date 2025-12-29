@@ -412,4 +412,51 @@ export class ProjectService {
       remaining,
     };
   }
+
+  async addSpending(projectId: string, spending: any): Promise<IProject | null> {
+    const project = await this.projectModel.findById(projectId).exec();
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    project.spendings.push(spending);
+    await project.save();
+
+    return this.findById(projectId);
+  }
+
+  async updateSpending(projectId: string, spendingId: string, updates: any): Promise<IProject | null> {
+    const project = await this.projectModel.findById(projectId).exec();
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const spendingIndex = project.spendings.findIndex((s: any) => s._id.toString() === spendingId);
+
+    if (spendingIndex === -1) {
+      throw new NotFoundException('Spending not found');
+    }
+
+    Object.keys(updates).forEach(key => {
+      project.spendings[spendingIndex][key] = updates[key];
+    });
+
+    await project.save();
+    return this.findById(projectId);
+  }
+
+  async deleteSpending(projectId: string, spendingId: string): Promise<IProject | null> {
+    const project = await this.projectModel.findById(projectId).exec();
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    project.spendings = project.spendings.filter((s: any) => s._id.toString() !== spendingId);
+    await project.save();
+
+    return this.findById(projectId);
+  }
 }

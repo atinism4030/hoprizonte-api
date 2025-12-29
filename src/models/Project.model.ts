@@ -91,6 +91,11 @@ const RecommendedIndustrySchema = new mongoose.Schema({
   companies: [{ type: RecommendedCompanySchema }],
 });
 
+const SpendingSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  amount: { type: Number, required: true },
+}, { timestamps: true });
+
 export const ProjectSchema = new mongoose.Schema(
   {
     project: { type: ProjectDetailsSchema, required: true },
@@ -100,6 +105,7 @@ export const ProjectSchema = new mongoose.Schema(
     risk_analysis: [{ type: RiskAnalysisSchema }],
     budget_tips: [{ type: String }],
     recommended_companies: [{ type: RecommendedIndustrySchema }],
+    spendings: [{ type: SpendingSchema }],
     user_id: { type: String, required: true, index: true },
     full_ai_response_json: { type: String, required: true },
     total_spent: { type: String, default: "0" },
