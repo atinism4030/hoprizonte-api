@@ -25,6 +25,9 @@ import { HttpModule } from '@nestjs/axios';
 import { StorySchema } from './models/Story.model';
 import { CloudinaryService } from './services/cloudinary.service';
 import { ProjectSchema } from './models/Project.model';
+import { InvoiceSchema } from './models/Invoice.model';
+import { InvoiceController } from './controllers/invoice.controller';
+import { InvoiceService } from './services/invoice.service';
 
 @Module({
   imports: [
@@ -41,6 +44,7 @@ import { ProjectSchema } from './models/Project.model';
     MongooseModule.forFeature([{ name: "Industry", schema: IndustrySchema }]),
     MongooseModule.forFeature([{name: "Story", schema: StorySchema}]),
     MongooseModule.forFeature([{name: "Project", schema: ProjectSchema}]),
+    MongooseModule.forFeature([{name: "Invoice", schema: InvoiceSchema}]),
     // MongooseModule.forFeature([{name: "Project", schema:}]),
     ScheduleModule.forRoot(),
     HttpModule
@@ -54,6 +58,7 @@ import { ProjectSchema } from './models/Project.model';
     TestingController,
     IndustryController,
     AiController,
+    InvoiceController
   ],
 
   providers: [
@@ -64,7 +69,8 @@ import { ProjectSchema } from './models/Project.model';
     TestingService,
     IndustryService,
     AiService,
-    CloudinaryService
+    CloudinaryService,
+    InvoiceService
 
   ],
 })
