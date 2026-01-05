@@ -9,10 +9,12 @@ import { AppService } from './app.service';
 import { AccountController } from './controllers/account.controller';
 import { StoryController } from './controllers/story.controller';
 import { ProjectController } from './controllers/project.controller';
+import { ChatController } from './controllers/chat.controller';
 
 import { AccountService } from './services/account.service';
 import { StoryService } from './services/story.service';
 import { ProjectService } from './services/project.service';
+import { ChatService } from './services/chat.service';
 import { AccountSchema } from './models/Account.model';
 import { TestingController } from './controllers/testing.controller';
 import { TestingService } from './services/testing.service';
@@ -25,6 +27,7 @@ import { HttpModule } from '@nestjs/axios';
 import { StorySchema } from './models/Story.model';
 import { CloudinaryService } from './services/cloudinary.service';
 import { ProjectSchema } from './models/Project.model';
+import { ChatSessionSchema } from './models/ChatSession.model';
 
 @Module({
   imports: [
@@ -39,9 +42,9 @@ import { ProjectSchema } from './models/Project.model';
     }),
     MongooseModule.forFeature([{ name: "Account", schema: AccountSchema }]),
     MongooseModule.forFeature([{ name: "Industry", schema: IndustrySchema }]),
-    MongooseModule.forFeature([{name: "Story", schema: StorySchema}]),
-    MongooseModule.forFeature([{name: "Project", schema: ProjectSchema}]),
-    // MongooseModule.forFeature([{name: "Project", schema:}]),
+    MongooseModule.forFeature([{ name: "Story", schema: StorySchema }]),
+    MongooseModule.forFeature([{ name: "Project", schema: ProjectSchema }]),
+    MongooseModule.forFeature([{ name: "ChatSession", schema: ChatSessionSchema }]),
     ScheduleModule.forRoot(),
     HttpModule
   ],
@@ -51,6 +54,7 @@ import { ProjectSchema } from './models/Project.model';
     AccountController,
     StoryController,
     ProjectController,
+    ChatController,
     TestingController,
     IndustryController,
     AiController,
@@ -61,11 +65,11 @@ import { ProjectSchema } from './models/Project.model';
     AccountService,
     StoryService,
     ProjectService,
+    ChatService,
     TestingService,
     IndustryService,
     AiService,
     CloudinaryService
-
   ],
 })
 export class AppModule { }

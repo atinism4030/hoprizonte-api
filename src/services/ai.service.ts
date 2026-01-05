@@ -263,11 +263,38 @@ export class AiService {
     emittedPhaseCount: number,
     observer: any
   ): void {
+    this.logger.log(`emitRemainingSections called. Content length: ${fullContent?.length || 0}`);
+    this.logger.log(`Already emitted: project=${emittedSections.has('project')}, text_response=${emittedSections.has('text_response')}, phases=${emittedPhaseCount}`);
+
+    if (!fullContent || fullContent.trim().length === 0) {
+      this.logger.warn('No content received from AI');
+      if (!emittedSections.has('text_response')) {
+        emittedSections.add('text_response');
+        observer.next({
+          type: 'section',
+          section: 'text_response',
+          data: 'Ju lutem provoni përsëri. Sistemi nuk mori përgjigje.',
+          nextStatus: '',
+        });
+      }
+      return;
+    }
+
     const cleanedContent = this.cleanJsonContent(fullContent);
+    this.logger.log(`Cleaned content (first 200 chars): ${cleanedContent.substring(0, 200)}`);
+
+    let parsed: any = null;
+    let parseSuccess = false;
 
     try {
-      const parsed = JSON.parse(cleanedContent);
+      parsed = JSON.parse(cleanedContent);
+      parseSuccess = true;
+      this.logger.log(`JSON parse successful. Keys: ${Object.keys(parsed).join(', ')}`);
+    } catch (e) {
+      this.logger.warn(`JSON parse failed: ${e.message}`);
+    }
 
+    if (parseSuccess && parsed) {
       if (!emittedSections.has('project') && parsed.project) {
         emittedSections.add('project');
         observer.next({
@@ -276,6 +303,7 @@ export class AiService {
           data: parsed.project,
           nextStatus: '',
         });
+        this.logger.log('Emitted project section');
       }
 
       if (parsed.phases && Array.isArray(parsed.phases)) {
@@ -286,6 +314,7 @@ export class AiService {
             data: parsed.phases[i],
             nextStatus: '',
           });
+          this.logger.log(`Emitted phase ${i + 1}`);
         }
       }
 
@@ -297,20 +326,34 @@ export class AiService {
           data: parsed.text_response,
           nextStatus: '',
         });
+        this.logger.log('Emitted text_response from parsed JSON');
+        return;
       }
-    } catch (e) {
-      if (!emittedSections.has('text_response')) {
-        const textData = this.extractSection(cleanedContent, 'text_response');
-        if (textData !== null) {
-          emittedSections.add('text_response');
-          observer.next({
-            type: 'section',
-            section: 'text_response',
-            data: textData,
-            nextStatus: '',
-          });
-        }
+    }
+
+    if (!emittedSections.has('text_response') && !emittedSections.has('project') && emittedPhaseCount === 0) {
+      const textData = this.extractSection(cleanedContent, 'text_response');
+      if (textData !== null) {
+        emittedSections.add('text_response');
+        observer.next({
+          type: 'section',
+          section: 'text_response',
+          data: textData,
+          nextStatus: '',
+        });
+        this.logger.log('Emitted text_response via extraction');
+        return;
       }
+
+      emittedSections.add('text_response');
+      const fallbackContent = cleanedContent.trim();
+      this.logger.log(`Emitting raw content as fallback. Length: ${fallbackContent.length}`);
+      observer.next({
+        type: 'section',
+        section: 'text_response',
+        data: fallbackContent,
+        nextStatus: '',
+      });
     }
   }
 
