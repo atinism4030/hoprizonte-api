@@ -64,131 +64,156 @@ export class AiService {
     }
   }
 
-  generateStream(prompt: Prompt): Observable<any> {
-    return new Observable((observer) => {
-      const messages: ChatMessage[] = [
-        { role: 'system', content: prompt.system },
-        ...(prompt.history || []),
-        { role: 'user', content: prompt.user },
-      ];
+generateStream(prompt: Prompt): Observable<any> {
+  return new Observable((observer) => {
+    const messages: ChatMessage[] = [
+      { role: 'system', content: prompt.system },
+      ...(prompt.history || []),
+      { role: 'user', content: prompt.user },
+    ];
 
-      const body = {
-        model: 'mistral-large-latest',
-        stream: true,
-        messages,
-      };
+    const body = {
+      model: 'mistral-large-latest',
+      stream: true,
+      messages,
+    };
 
-      const headers = {
-        Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
-        'Content-Type': 'application/json',
-      };
+    const headers = {
+      Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+      'Content-Type': 'application/json',
+    };
 
-      let fullContent = '';
-      const emittedSections = new Set<string>();
-      let emittedPhaseCount = 0;
+    let fullContent = '';
+    const emittedSections = new Set<string>();
+    let emittedPhaseCount = 0;
 
-      axios
-        .post(this.apiUrl, body, {
-          headers,
-          responseType: 'stream',
-          timeout: 600000,
-        })
-        .then((response) => {
-          const stream = response.data;
+    axios
+      .post(this.apiUrl, body, {
+        headers,
+        responseType: 'stream',
+        timeout: 600000,
+      })
+      .then((response) => {
+        const stream = response.data;
 
-          stream.on('data', (chunk: Buffer) => {
-            const lines = chunk
-              .toString()
-              .split('\n')
-              .filter((line) => line.trim() !== '');
+        stream.on('data', (chunk: Buffer) => {
+          const lines = chunk
+            .toString()
+            .split('\n')
+            .filter((line) => line.trim() !== '');
 
-            for (const line of lines) {
-              if (line.includes('[DONE]')) {
-                this.emitRemainingSections(fullContent, emittedSections, emittedPhaseCount, observer);
-                observer.next({
-                  type: 'complete',
-                  fullContent: fullContent,
-                });
-                observer.complete();
-                return;
-              }
+          for (const line of lines) {
+            if (line.includes('[DONE]')) {
+              const estimatedTokens = Math.ceil(fullContent.length / 4);
+              console.log({estimatedTokens, fullContent});
+              
+              this.logger.log(`TOKENS_STREAM_ESTIMATED=${estimatedTokens}`);
 
-              if (line.startsWith('data: ')) {
-                try {
-                  const jsonStr = line.replace('data: ', '');
-                  const json = JSON.parse(jsonStr);
-                  const content = json.choices?.[0]?.delta?.content;
-                  if (content) {
-                    fullContent += content;
+              this.emitRemainingSections(
+                fullContent,
+                emittedSections,
+                emittedPhaseCount,
+                observer,
+              );
 
-                    const cleanedContent = this.cleanJsonContent(fullContent);
+              observer.next({
+                type: 'complete',
+                fullContent,
+                estimatedTokens,
+              });
+              observer.complete();
+              return;
+            }
 
-                    if (!emittedSections.has('project')) {
-                      const projectComplete = this.isSectionComplete(cleanedContent, 'project');
-                      if (projectComplete) {
-                        const projectData = this.extractSection(cleanedContent, 'project');
-                        if (projectData !== null) {
-                          emittedSections.add('project');
-                          observer.next({
-                            type: 'section',
-                            section: 'project',
-                            data: projectData,
-                            nextStatus: 'Duke krijuar fazën 1...',
-                          });
-                        }
-                      }
-                    }
+            if (line.startsWith('data: ')) {
+              try {
+                const json = JSON.parse(line.replace('data: ', ''));
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  fullContent += content;
 
-                    const newPhases = this.extractIndividualPhases(cleanedContent, emittedPhaseCount);
-                    for (const phase of newPhases) {
-                      emittedPhaseCount++;
-                      observer.next({
-                        type: 'phase',
-                        phaseIndex: phase.id || emittedPhaseCount,
-                        data: phase,
-                        nextStatus: emittedPhaseCount < 4 ? `Duke krijuar fazën ${emittedPhaseCount + 1}...` : 'Duke përfunduar...',
-                      });
-                    }
+                  const cleanedContent = this.cleanJsonContent(fullContent);
 
-                    if (!emittedSections.has('text_response')) {
-                      const textComplete = this.isSectionComplete(cleanedContent, 'text_response');
-                      if (textComplete) {
-                        const textData = this.extractSection(cleanedContent, 'text_response');
-                        if (textData !== null) {
-                          emittedSections.add('text_response');
-                          observer.next({
-                            type: 'section',
-                            section: 'text_response',
-                            data: textData,
-                            nextStatus: '',
-                          });
-                        }
+                  if (!emittedSections.has('project')) {
+                    if (this.isSectionComplete(cleanedContent, 'project')) {
+                      const projectData = this.extractSection(cleanedContent, 'project');
+                      if (projectData !== null) {
+                        emittedSections.add('project');
+                        observer.next({
+                          type: 'section',
+                          section: 'project',
+                          data: projectData,
+                          nextStatus: 'Duke krijuar fazën 1...',
+                        });
                       }
                     }
                   }
-                } catch (e) { }
-              }
+
+                  const newPhases = this.extractIndividualPhases(
+                    cleanedContent,
+                    emittedPhaseCount,
+                  );
+
+                  for (const phase of newPhases) {
+                    emittedPhaseCount++;
+                    observer.next({
+                      type: 'phase',
+                      phaseIndex: phase.id || emittedPhaseCount,
+                      data: phase,
+                      nextStatus:
+                        emittedPhaseCount < 4
+                          ? `Duke krijuar fazën ${emittedPhaseCount + 1}...`
+                          : 'Duke përfunduar...',
+                    });
+                  }
+
+                  if (!emittedSections.has('text_response')) {
+                    if (this.isSectionComplete(cleanedContent, 'text_response')) {
+                      const textData = this.extractSection(
+                        cleanedContent,
+                        'text_response',
+                      );
+                      if (textData !== null) {
+                        emittedSections.add('text_response');
+                        observer.next({
+                          type: 'section',
+                          section: 'text_response',
+                          data: textData,
+                          nextStatus: '',
+                        });
+                      }
+                    }
+                  }
+                }
+              } catch {}
             }
-          });
-
-          stream.on('end', () => {
-            this.emitRemainingSections(fullContent, emittedSections, emittedPhaseCount, observer);
-            observer.next({
-              type: 'complete',
-              fullContent: fullContent,
-            });
-            observer.complete();
-          });
-
-          stream.on('error', (err: any) => {
-            observer.error(err);
-          });
-        })
-        .catch((err) => {
-          observer.error(err);
+          }
         });
-    });
-  }
+
+        stream.on('end', () => {
+          const estimatedTokens = Math.ceil(fullContent.length / 4);
+          this.logger.log(`TOKENS_STREAM_ESTIMATED=${estimatedTokens}`);
+
+          this.emitRemainingSections(
+            fullContent,
+            emittedSections,
+            emittedPhaseCount,
+            observer,
+          );
+
+          observer.next({
+            type: 'complete',
+            fullContent,
+            estimatedTokens,
+          });
+          observer.complete();
+        });
+
+        stream.on('error', (err: any) => observer.error(err));
+      })
+      .catch((err) => observer.error(err));
+  });
+}
 
   private extractIndividualPhases(content: string, alreadyEmittedCount: number): any[] {
     const phases: any[] = [];
@@ -495,4 +520,69 @@ export class AiService {
       return null;
     }
   }
+
+async generateInvoice(userPrompt: string, history: ChatMessage[] = []): Promise<any> {
+  const systemPrompt = `
+    You are an AI assistant that creates professional construction invoices.
+
+    Rules:
+    - ONLY return valid JSON
+    - NO explanations
+    - NO markdown
+    - NO comments
+    - Currency is MKD default, but if its not specified by the user please ask them
+    - Prices must be the one that the user tells in their prompt
+    - If data is missing, ask the user again for things that are missing or you dont understand
+
+    JSON FORMAT:
+    {
+      "client_name": string,
+      "client_email": string | null,
+      "client_address": string | null,
+
+      "title": string,
+      "description": string,
+
+      "items": [
+        {
+          "name": string,
+          "quantity": string,
+          "unit_price": string,
+          "total_price": string
+        }
+      ],
+
+      "subtotal": string,
+      "tax_percent": number,
+      "tax_amount": string,
+      "total_amount": string,
+      "advance_paid": string,
+      "amount_due": string,
+
+      "due_date": string,
+      "notes": string
+    }
+    `.trim();
+
+    const raw = await this.generate({
+      system: systemPrompt,
+      user: userPrompt,
+      history: history, 
+    });
+
+    const cleaned = this.cleanJsonContent(raw);
+
+    try {
+      return JSON.parse(cleaned);
+    } catch (e) {
+      this.logger.error(`AI JSON Parse Error: ${e.message} | Content: ${cleaned}`);
+      return {
+        type: 'question',
+        message: cleaned
+      };
+    }
+  }
+
 }
+
+

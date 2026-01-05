@@ -28,6 +28,13 @@ import { StorySchema } from './models/Story.model';
 import { CloudinaryService } from './services/cloudinary.service';
 import { ProjectSchema } from './models/Project.model';
 import { ChatSessionSchema } from './models/ChatSession.model';
+import { InvoiceSchema } from './models/Invoice.model';
+import { InvoiceController } from './controllers/invoice.controller';
+import { InvoiceService } from './services/invoice.service';
+import { ClientSchema } from './models/Client.model';
+import { ClientController } from './controllers/client.controller';
+import { ClientService } from './services/client.service';
+
 
 @Module({
   imports: [
@@ -35,9 +42,13 @@ import { ChatSessionSchema } from './models/ChatSession.model';
 
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI'),
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const uri = configService.get<string>('MONGO_URI');
+        console.log("Connecting to Mongo URI:", uri ? "Found URI" : "URI NOT FOUND");
+        return {
+          uri,
+        };
+      },
       inject: [ConfigService],
     }),
     MongooseModule.forFeature([{ name: "Account", schema: AccountSchema }]),
@@ -45,6 +56,10 @@ import { ChatSessionSchema } from './models/ChatSession.model';
     MongooseModule.forFeature([{ name: "Story", schema: StorySchema }]),
     MongooseModule.forFeature([{ name: "Project", schema: ProjectSchema }]),
     MongooseModule.forFeature([{ name: "ChatSession", schema: ChatSessionSchema }]),
+    MongooseModule.forFeature([{ name: "Invoice", schema: InvoiceSchema }]),
+    MongooseModule.forFeature([{ name: "Client", schema: ClientSchema }]),
+
+    // MongooseModule.forFeature([{name: "Project", schema:}]),
     ScheduleModule.forRoot(),
     HttpModule
   ],
@@ -58,7 +73,10 @@ import { ChatSessionSchema } from './models/ChatSession.model';
     TestingController,
     IndustryController,
     AiController,
+    InvoiceController,
+    ClientController
   ],
+
 
   providers: [
     AppService,
@@ -69,7 +87,10 @@ import { ChatSessionSchema } from './models/ChatSession.model';
     TestingService,
     IndustryService,
     AiService,
-    CloudinaryService
+    CloudinaryService,
+    InvoiceService,
+    ClientService
+
   ],
 })
 export class AppModule { }
