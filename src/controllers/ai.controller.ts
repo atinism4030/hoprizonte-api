@@ -22,7 +22,7 @@ export class AiController {
     const industries = await this.industryService.getAll('name');
     const companies = await this.accountService.fetchAcocunts(EAccountType.COMPANY);
 
-    const fullPrompt = this.buildPrompt(prompt, industries, companies);
+    const fullPrompt = this.buildPrompt(prompt, industries, companies, undefined, 'sq');
 
     try {
       const response = await this.aiService.generate(fullPrompt);
@@ -37,6 +37,7 @@ export class AiController {
   async generateStream(
     @Query('prompt') prompt: string,
     @Query('history') historyJson: string,
+    @Query('lang') lang: string = 'sq',
     @Res() res: Response
   ) {
     if (!prompt) {
@@ -59,7 +60,7 @@ export class AiController {
       "name services address industries reviews"
     );
 
-    const fullPrompt = this.buildPrompt(prompt, industries, companies, history);
+    const fullPrompt = this.buildPrompt(prompt, industries, companies, history, lang);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -86,7 +87,8 @@ export class AiController {
     prompt: string,
     industries: any[],
     companies: any[],
-    history: { role: 'user' | 'assistant'; content: string }[] = []
+    history: { role: 'user' | 'assistant'; content: string }[] = [],
+    lang: string = 'sq'
   ) {
     const formattedCompanies = companies.map(c => ({
       id: c._id?.toString(),
@@ -97,6 +99,29 @@ export class AiController {
       verified: true,
       services: c.services || []
     }));
+
+    const PHASE_NAMES = {
+      sq: [
+        "Planifikimi & Përgatitja",
+        "Themeli & Struktura",
+        "Sistemet & Enterieri",
+        "Eksterieri & Përfundimi"
+      ],
+      mk: [
+        "Планирање & Подготовка",
+        "Темел & Структура",
+        "Системи & Ентериер",
+        "Екстериер & Завршни работи"
+      ],
+      en: [
+        "Planning & Preparation",
+        "Foundation & Structure",
+        "Systems & Interior",
+        "Exterior & Finishing"
+      ]
+    };
+
+    const targetPhases = PHASE_NAMES[lang] || PHASE_NAMES.sq;
 
     const systemPrompt = `
 You are Horizonte AI - a professional construction planning assistant.
@@ -146,7 +171,7 @@ For ANY construction/renovation request, use this EXACT structure for phases:
   "phases": [
     {
       "id": 1,
-      "name": "Planning & Preparation",
+      "name": "${targetPhases[0]}",
       "task_count": 5,
       "works": [
         {
@@ -180,19 +205,19 @@ For ANY construction/renovation request, use this EXACT structure for phases:
     },
     {
       "id": 2,
-      "name": "Foundation & Structure",
+      "name": "${targetPhases[1]}",
       "task_count": 5,
       "works": []
     },
     {
       "id": 3,
-      "name": "Systems & Interior",
+      "name": "${targetPhases[2]}",
       "task_count": 8,
       "works": []
     },
     {
       "id": 4,
-      "name": "Exterior & Finishing",
+      "name": "${targetPhases[3]}",
       "task_count": 4,
       "works": []
     }
@@ -201,21 +226,21 @@ For ANY construction/renovation request, use this EXACT structure for phases:
 
 MANDATORY PHASE STRUCTURE - ALL 4 PHASES MUST HAVE WORKS:
 
-Phase 1 - Planning & Preparation (3-5 works):
+Phase 1 - ${targetPhases[0]} (3-5 works):
 - Initial assessment/inspection
 - Architectural design/planning
 - Permits and documentation
 - Material selection
 - Contractor hiring
 
-Phase 2 - Foundation & Structure (4-6 works - for renovations, include structural repairs):
+Phase 2 - ${targetPhases[1]} (4-6 works - for renovations, include structural repairs):
 - Demolition/removal of old elements
 - Structural repairs if needed
 - Wall modifications
 - Framework/support work
 - Masonry work
 
-Phase 3 - Systems & Interior (5-8 works):
+Phase 3 - ${targetPhases[2]} (5-8 works):
 - Electrical installation
 - Plumbing work
 - HVAC/heating
@@ -225,7 +250,7 @@ Phase 3 - Systems & Interior (5-8 works):
 - Painting
 - Kitchen/bathroom installation
 
-Phase 4 - Exterior & Finishing (3-5 works):
+Phase 4 - ${targetPhases[3]} (3-5 works):
 - Window/door installation
 - Facade work (if applicable)
 - Final touches and cleaning
