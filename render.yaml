@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: horizonte-api
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        sync: false
