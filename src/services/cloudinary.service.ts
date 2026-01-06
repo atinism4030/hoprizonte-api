@@ -21,8 +21,8 @@ export class CloudinaryService {
         },
       );
 
-      console.log({upload});
-      
+      console.log({ upload });
+
       upload.end(file.buffer);
     });
   }

@@ -7,23 +7,73 @@ import {
   Patch,
   Post,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiBody,
   ApiQuery,
   ApiResponse,
   ApiOperation,
+  ApiConsumes
 } from '@nestjs/swagger';
 import { type ObjectId } from 'mongoose';
 import { CreateAccountDTO, CreateUserAccountDTO, LoginDTO } from 'src/DTO/account.dto';
 import { AccountService } from 'src/services/account.service';
+import { GoogleDriveService } from 'src/services/google-drive.service';
 import { EAccountType } from 'src/types/account.types';
 
 @ApiTags('Account')
 @Controller('account')
 export class AccountController {
-  constructor(private readonly accountService: AccountService) { }
+  constructor(
+    private readonly accountService: AccountService,
+    private readonly googleDriveService: GoogleDriveService
+  ) { }
+
+  @Post('/upload-ads')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload ad content to Google Drive' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        companyId: { type: 'string' },
+        companyName: { type: 'string' }
+      },
+    },
+  })
+  async uploadAdContent(
+    @UploadedFile() file: any,
+    @Body('companyId') companyId: string,
+    @Body('companyName') companyName: string,
+  ) {
+    if (!file) throw new BadRequestException('File is required');
+    if (!companyName) {
+      throw new BadRequestException('Company Name is required');
+    }
+
+    const folderName = `${companyName} (${companyId})`;
+
+    try {
+      const fileData = await this.googleDriveService.uploadFile(file, folderName);
+      return {
+        message: 'Content uploaded successfully',
+        data: fileData
+      };
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      throw new BadRequestException(`Failed to upload content: ${error.message}`);
+    }
+  }
 
   @Post('/create-company-account')
   @ApiOperation({ summary: 'Create a new company account' })

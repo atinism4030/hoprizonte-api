@@ -34,7 +34,7 @@ import { InvoiceService } from './services/invoice.service';
 import { ClientSchema } from './models/Client.model';
 import { ClientController } from './controllers/client.controller';
 import { ClientService } from './services/client.service';
-
+import { GoogleDriveService } from './services/google-drive.service';
 
 @Module({
   imports: [
@@ -59,7 +59,6 @@ import { ClientService } from './services/client.service';
     MongooseModule.forFeature([{ name: "Invoice", schema: InvoiceSchema }]),
     MongooseModule.forFeature([{ name: "Client", schema: ClientSchema }]),
 
-    // MongooseModule.forFeature([{name: "Project", schema:}]),
     ScheduleModule.forRoot(),
     HttpModule
   ],
@@ -77,7 +76,6 @@ import { ClientService } from './services/client.service';
     ClientController
   ],
 
-
   providers: [
     AppService,
     AccountService,
@@ -89,8 +87,8 @@ import { ClientService } from './services/client.service';
     AiService,
     CloudinaryService,
     InvoiceService,
-    ClientService
-
+    ClientService,
+    GoogleDriveService
   ],
 })
 export class AppModule { }
