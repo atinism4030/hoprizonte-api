@@ -35,6 +35,7 @@ import { ClientSchema } from './models/Client.model';
 import { ClientController } from './controllers/client.controller';
 import { ClientService } from './services/client.service';
 import { GoogleDriveService } from './services/google-drive.service';
+import { EmailService } from './services/email.service';
 
 @Module({
   imports: [
@@ -88,7 +89,8 @@ import { GoogleDriveService } from './services/google-drive.service';
     CloudinaryService,
     InvoiceService,
     ClientService,
-    GoogleDriveService
+    GoogleDriveService,
+    EmailService
   ],
 })
 export class AppModule { }

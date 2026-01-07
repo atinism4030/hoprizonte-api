@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+// ki modeli o per te invoices kur e kerkojn klientin kopmanit :)))
+
 export const ClientSchema = new mongoose.Schema(
     {
         company_id: {

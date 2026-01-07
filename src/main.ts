@@ -11,16 +11,16 @@ async function bootstrap() {
 
   app.enableCors();
 
-  if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true') {
-    const config = new DocumentBuilder()
-      .setTitle('Horizonte API')
-      .setDescription('Horizonte API description')
-      .setVersion('1.0')
-      .addTag('horizonte')
-      .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, document);
-  }
+  // if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true') {
+  //   const config = new DocumentBuilder()
+  //     .setTitle('Horizonte API')
+  //     .setDescription('Horizonte API description')
+  //     .setVersion('1.0')
+  //     .addTag('horizonte')
+  //     .build();
+  //   const document = SwaggerModule.createDocument(app, config);
+  //   SwaggerModule.setup('api', app, document);
+  // }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

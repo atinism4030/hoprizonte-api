@@ -1,15 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsEmail, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
-import { IAccount, type PushToken, type AccountType } from "src/types/account.types";
 import { EIndustries } from "src/types/industries.types";
-import { IService } from "src/types/services.types";
 
 export class CreateAccountDTO {
 
     @ApiProperty({ example: "Timimetal Construction" })
     @IsString()
     name: string;
-    
+
     @ApiProperty({ example: "Tetovë, Zona Industriale" })
     @IsString()
     address: string;
@@ -83,40 +81,31 @@ export class CreateAccountDTO {
         ]
     })
     @IsArray()
-    services: IService[];
+    services: any[];
 
     @ApiProperty({
-        enum: ["USER", "COMPANY"],
         example: "COMPANY"
     })
-    
     @IsString()
-    type: AccountType;
+    type: string;
 
     @ApiProperty({
         type: [String],
         example: []
     })
     @IsArray()
-    fav_list: IAccount[] | string[];
+    fav_list: string[];
 
     @ApiProperty({ example: 100 })
     @IsNumber()
     credits: number;
 
-    // @ApiProperty({ example: [{
-    //     facebook: "facebook.com",
-    //     instagram: "instagram.com",
-    //     tiktok: "tiktok.com",
-    //     website: "website.com",
-    // }] })
-
     @IsArray()
-    social_media_links: [];
+    social_media_links: any[];
 
     @IsOptional()
     @IsString()
-    push_token: PushToken;
+    push_token: string;
 }
 
 export class CreateUserAccountDTO {
@@ -131,7 +120,7 @@ export class CreateUserAccountDTO {
 
     @IsOptional()
     @IsString()
-    push_token: PushToken;
+    push_token: string;
 }
 
 
@@ -144,8 +133,8 @@ export class LoginDTO {
     @ApiProperty({ example: "password123" })
     @IsString()
     password: string;
-    
+
     @IsOptional()
     @IsString()
-    push_token: PushToken;
+    push_token: string;
 }
