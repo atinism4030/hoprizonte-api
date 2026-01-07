@@ -47,6 +47,17 @@ export class InvoiceService {
 
   async create(data: any, company: any) {
     const companyId = data.company_id || company?._id || company?.id;
+    const invoiceNumber = data.invoice_number || `INV-${Date.now()}`;
+
+    // Check for duplicate invoice number within the same company
+    const existingInvoice = await this.invoiceModel.findOne({
+      invoice_number: invoiceNumber,
+      company_id: companyId
+    });
+
+    if (existingInvoice) {
+      throw new Error(`Invoice number "${invoiceNumber}" already exists. Please use a different number.`);
+    }
 
     if (data.client_name) {
       try {
@@ -63,7 +74,7 @@ export class InvoiceService {
 
     const invoice = await this.invoiceModel.create({
       ...data,
-      invoice_number: data.invoice_number || `INV-${Date.now()}`,
+      invoice_number: invoiceNumber,
       company_id: companyId,
       status: data.status || 'DRAFT'
     });
