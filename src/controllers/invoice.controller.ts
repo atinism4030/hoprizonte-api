@@ -10,6 +10,14 @@ export class InvoiceController {
         private readonly emailService: EmailService
     ) { }
 
+    @Get("dashboard-url")
+    getDashboardUrl() {
+        return {
+            url: "https://invoice-horizonte.vercel.app",
+            message: "Invoice Dashboard URL"
+        };
+    }
+
     @Post()
     async create(@Body() body: any, @Req() req) {
         return this.invoiceService.create(body, req.user);
