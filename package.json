@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "nest build",
+    "build": "node --max-old-space-size=2048 node_modules/.bin/nest build",
     "start": "node --max-old-space-size=460 dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
