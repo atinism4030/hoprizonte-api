@@ -13,7 +13,7 @@ export class InvoiceController {
     @Get("dashboard-url")
     getDashboardUrl() {
         return {
-            url: "https://invoice-horizonte.vercel.app",
+            url: "https://invoice.horizonte.mk",
             message: "Invoice Dashboard URL"
         };
     }
