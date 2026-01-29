@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -11,16 +11,8 @@ async function bootstrap() {
 
   app.enableCors();
 
-  // if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true') {
-  //   const config = new DocumentBuilder()
-  //     .setTitle('Horizonte API')
-  //     .setDescription('Horizonte API description')
-  //     .setVersion('1.0')
-  //     .addTag('horizonte')
-  //     .build();
-  //   const document = SwaggerModule.createDocument(app, config);
-  //   SwaggerModule.setup('api', app, document);
-  // }
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

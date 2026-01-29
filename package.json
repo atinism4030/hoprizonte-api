@@ -24,6 +24,7 @@
     "@nestjs/swagger": "^11.2.3",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.2",
     "class-validator": "^0.14.3",
     "cloudinary": "^2.8.0",
     "googleapis": "^169.0.0",
