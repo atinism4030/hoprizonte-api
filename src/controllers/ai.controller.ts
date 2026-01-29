@@ -55,10 +55,19 @@ export class AiController {
     }
 
     const industries = await this.industryService.getAll('name');
-    const companies = await this.accountService.fetchAcocunts(
+
+    // Fetch limited companies to prevent prompt bloat
+    const allCompanies = await this.accountService.fetchAcocunts(
       EAccountType.COMPANY,
       "name services address industries reviews"
     );
+
+    // Randomize and limit to 20 relevant companies
+    const companies = allCompanies
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 20);
+
+    console.log(`Building prompt for user: ${prompt.substring(0, 50)}... with ${companies.length} companies and ${history.length} messages in history.`);
 
     const fullPrompt = this.buildPrompt(prompt, industries, companies, history, lang);
 

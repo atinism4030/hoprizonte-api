@@ -40,19 +40,21 @@ export class AccountService {
       console.log({ loginDTO });
 
       const account = await this.accountModel.findOne({ email: loginDTO.email });
-      const push_token_has_changed = account?.push_token !== loginDTO.push_token;
 
-      if(push_token_has_changed) { 
-        await this.accountModel.findByIdAndUpdate(account?._id, {push_token: loginDTO.push_token});
-      }
-      
-      console.log({ account });
       if (!account) {
         return {
           data: null,
           message: "Account not found"
         }
       }
+
+      const push_token_has_changed = account.push_token !== loginDTO.push_token;
+
+      if (push_token_has_changed) {
+        await this.accountModel.findByIdAndUpdate(account._id, { push_token: loginDTO.push_token });
+      }
+
+      console.log({ account });
 
 
       let validPassword = false;
@@ -95,9 +97,14 @@ export class AccountService {
     }
   }
 
-  async editAccount(id: ObjectId, editedCompany: CreateAccountDTO) {
+  async editAccount(id: ObjectId, data: Partial<CreateAccountDTO>) {
     try {
-      const newAccount = await this.accountModel.findByIdAndUpdate(id, editedCompany);
+      if (data.password) {
+        const salt = await bcrypt.genSaltSync(10);
+        data.password = await bcrypt.hashSync(data.password, salt);
+      }
+
+      const newAccount = await this.accountModel.findByIdAndUpdate(id, data, { new: true });
       console.log({ newAccount });
       return newAccount;
     } catch (error) {

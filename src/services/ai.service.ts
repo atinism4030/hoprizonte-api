@@ -77,9 +77,13 @@ export class AiService {
       const body = {
         model: 'mistral-small-latest',
         stream: true,
-        messages,
+        messages: [
+          { role: 'system', content: prompt.system },
+          ...(prompt.history?.slice(-10) || []),
+          { role: 'user', content: prompt.user },
+        ],
         temperature: 0.3,
-        max_tokens: 4000,
+        max_tokens: 8000,
       };
 
       const headers = {
@@ -109,9 +113,7 @@ export class AiService {
             for (const line of lines) {
               if (line.includes('[DONE]')) {
                 const estimatedTokens = Math.ceil(fullContent.length / 4);
-                console.log({ estimatedTokens, fullContent });
-
-                this.logger.log(`TOKENS_STREAM_ESTIMATED=${estimatedTokens}`);
+                this.logger.log(`STREAM_DONE TokensEstimated=${estimatedTokens} ContentLength=${fullContent.length}`);
 
                 this.emitRemainingSections(
                   fullContent,
@@ -131,13 +133,17 @@ export class AiService {
 
               if (line.startsWith('data: ')) {
                 try {
-                  const json = JSON.parse(line.replace('data: ', ''));
+                  const dataStr = line.replace('data: ', '').trim();
+                  if (!dataStr) continue;
+
+                  const json = JSON.parse(dataStr);
                   const content = json.choices?.[0]?.delta?.content;
                   if (content) {
                     fullContent += content;
 
                     const cleanedContent = this.cleanJsonContent(fullContent);
 
+                    // Try to emit project section
                     if (!emittedSections.has('project')) {
                       if (this.isSectionComplete(cleanedContent, 'project')) {
                         const projectData = this.extractSection(cleanedContent, 'project');
@@ -153,6 +159,7 @@ export class AiService {
                       }
                     }
 
+                    // Try to emit new phases
                     const newPhases = this.extractIndividualPhases(
                       cleanedContent,
                       emittedPhaseCount,
@@ -171,6 +178,7 @@ export class AiService {
                       });
                     }
 
+                    // Try to emit text_response
                     if (!emittedSections.has('text_response')) {
                       if (this.isSectionComplete(cleanedContent, 'text_response')) {
                         const textData = this.extractSection(
@@ -321,6 +329,19 @@ export class AiService {
       this.logger.log(`JSON parse successful. Keys: ${Object.keys(parsed).join(', ')}`);
     } catch (e) {
       this.logger.warn(`JSON parse failed: ${e.message}`);
+
+      // If JSON parse fails, maybe we can still extract some phases manually
+      const remainingPhases = this.extractIndividualPhases(cleanedContent, emittedPhaseCount);
+      for (const phase of remainingPhases) {
+        emittedPhaseCount++;
+        observer.next({
+          type: 'phase',
+          phaseIndex: phase.id || emittedPhaseCount,
+          data: phase,
+          nextStatus: '',
+        });
+        this.logger.log(`Emitted phase ${emittedPhaseCount} via manual extraction fallback`);
+      }
     }
 
     if (parseSuccess && parsed) {
@@ -360,7 +381,8 @@ export class AiService {
       }
     }
 
-    if (!emittedSections.has('text_response') && !emittedSections.has('project') && emittedPhaseCount === 0) {
+    // Final fallback: if no text response was emitted, try to extract it or just send the cleaned content
+    if (!emittedSections.has('text_response')) {
       const textData = this.extractSection(cleanedContent, 'text_response');
       if (textData !== null) {
         emittedSections.add('text_response');
@@ -370,19 +392,19 @@ export class AiService {
           data: textData,
           nextStatus: '',
         });
-        this.logger.log('Emitted text_response via extraction');
-        return;
+        this.logger.log('Emitted text_response via extraction fallback');
+      } else if (!emittedSections.has('project') && emittedPhaseCount === 0) {
+        // Only send full content if we literally emitted NOTHING else
+        emittedSections.add('text_response');
+        const fallbackContent = cleanedContent.trim();
+        this.logger.log(`Emitting raw content as fallback. Length: ${fallbackContent.length}`);
+        observer.next({
+          type: 'section',
+          section: 'text_response',
+          data: fallbackContent,
+          nextStatus: '',
+        });
       }
-
-      emittedSections.add('text_response');
-      const fallbackContent = cleanedContent.trim();
-      this.logger.log(`Emitting raw content as fallback. Length: ${fallbackContent.length}`);
-      observer.next({
-        type: 'section',
-        section: 'text_response',
-        data: fallbackContent,
-        nextStatus: '',
-      });
     }
   }
 
