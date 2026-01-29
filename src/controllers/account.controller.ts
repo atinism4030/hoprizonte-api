@@ -23,7 +23,7 @@ import {
 import { type ObjectId } from 'mongoose';
 import { CreateAccountDTO, CreateUserAccountDTO, LoginDTO } from 'src/DTO/account.dto';
 import { AccountService } from 'src/services/account.service';
-import { GoogleDriveService } from 'src/services/google-drive.service';
+import { CloudinaryService } from 'src/services/cloudinary.service';
 import { EAccountType } from 'src/types/account.types';
 
 @ApiTags('Account')
@@ -31,12 +31,12 @@ import { EAccountType } from 'src/types/account.types';
 export class AccountController {
   constructor(
     private readonly accountService: AccountService,
-    private readonly googleDriveService: GoogleDriveService
+    private readonly cloudinaryService: CloudinaryService
   ) { }
 
   @Post('/upload-ads')
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload ad content to Google Drive' })
+  @ApiOperation({ summary: 'Upload ad content to Cloudinary' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -61,13 +61,19 @@ export class AccountController {
       throw new BadRequestException('Company Name is required');
     }
 
-    const folderName = `${companyName} (${companyId})`;
+    const sanitizedCompanyName = companyName.replace(/[&#%<>?]/g, '').trim();
+    const folderName = `ads/${sanitizedCompanyName}-${companyId}`;
 
     try {
-      const fileData = await this.googleDriveService.uploadFile(file, folderName);
+      const fileData = await this.cloudinaryService.uploadFile(file, folderName);
       return {
-        message: 'Content uploaded successfully',
-        data: fileData
+        message: 'Content uploaded successfully to Cloudinary',
+        data: {
+          id: fileData.public_id,
+          name: fileData.original_filename,
+          webViewLink: fileData.secure_url,
+          webContentLink: fileData.secure_url,
+        }
       };
     } catch (error: any) {
       console.error("Upload error:", error);
