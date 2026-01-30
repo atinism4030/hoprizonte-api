@@ -36,6 +36,7 @@ import { ClientController } from './controllers/client.controller';
 import { ClientService } from './services/client.service';
 import { GoogleDriveService } from './services/google-drive.service';
 import { EmailService } from './services/email.service';
+import { SocialMediaController } from './controllers/social-media.controller';
 
 @Module({
   imports: [
@@ -74,7 +75,8 @@ import { EmailService } from './services/email.service';
     IndustryController,
     AiController,
     InvoiceController,
-    ClientController
+    ClientController,
+    SocialMediaController
   ],
 
   providers: [
@@ -90,7 +92,8 @@ import { EmailService } from './services/email.service';
     InvoiceService,
     ClientService,
     GoogleDriveService,
-    EmailService
+    EmailService,
+    CloudinaryService
   ],
 })
 export class AppModule { }

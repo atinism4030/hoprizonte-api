@@ -11,6 +11,31 @@ export class CloudinaryService {
     });
   }
 
+  async getCompanyFolders(parentFolder: string = 'ads'): Promise<any> {
+    try {
+      const result = await cloudinary.api.sub_folders(parentFolder);
+      return result.folders;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getCompanyImages(folderPath: string): Promise<any> {
+    try {
+      const result = await cloudinary.search
+        .expression(`folder:"${folderPath}" AND resource_type:image`)
+        .sort_by('created_at', 'desc')
+        .max_results(100)
+        .execute();
+
+        console.log({result});
+      
+      return result.resources; 
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async uploadFile(file: Express.Multer.File, folder: string = 'stories'): Promise<any> {
     return new Promise((resolve, reject) => {
       const upload = cloudinary.uploader.upload_stream(
