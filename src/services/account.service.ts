@@ -57,12 +57,11 @@ export class AccountService {
       console.log({ account });
 
 
-      let validPassword = false;
-      if (account.type === "COMPANY") {
-        validPassword = (account.password == loginDTO.password)
-      } else {
-        validPassword = await bcrypt.compareSync(loginDTO.password, account.password);
-      }
+      let validPassword = await bcrypt.compareSync(loginDTO.password, account.password);
+      // if (account.type === "COMPANY") {
+      //   validPassword = (account.password == loginDTO.password)
+      // } else {
+      //   validPassword = await bcrypt.compareSync(loginDTO.password, account.password);
 
       console.log({ validPassword });
 
