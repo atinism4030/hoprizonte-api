@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
 import { Observable } from 'rxjs';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -24,35 +24,31 @@ const SECTION_STATUS_MESSAGES: Record<string, string> = {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private readonly apiUrl = 'https://api.mistral.ai/v1/chat/completions';
+  private readonly genAI: GoogleGenerativeAI;
+  private readonly model;
+
+  constructor() {
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  }
+
 
   async generate(prompt: Prompt): Promise<string> {
-    const messages: ChatMessage[] = [
-      { role: 'system', content: prompt.system },
-      ...(prompt.history || []),
-      { role: 'user', content: prompt.user },
-    ];
-
-    const body = {
-      model: 'mistral-small-latest',
-      stream: false,
-      messages,
-      temperature: 0.3,
-      max_tokens: 4000,
-    };
-
-    const headers = {
-      Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
-      'Content-Type': 'application/json',
-    };
+    const fullPrompt = prompt.system + '\n\n' +
+      (prompt.history?.map(m => `${m.role}: ${m.content}`).join('\n') || '') +
+      '\n\nUser: ' + prompt.user;
 
     try {
-      const response = await axios.post(this.apiUrl, body, {
-        headers,
-        timeout: 600000,
+      const result = await this.model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 4000,
+        },
       });
 
-      const content = response.data.choices?.[0]?.message?.content;
+      const response = result.response;
+      const content = response.text();
 
       if (!content) {
         this.logger.warn('No content in response');
@@ -68,162 +64,111 @@ export class AiService {
 
   generateStream(prompt: Prompt): Observable<any> {
     return new Observable((observer) => {
-      const messages: ChatMessage[] = [
-        { role: 'system', content: prompt.system },
-        ...(prompt.history || []),
-        { role: 'user', content: prompt.user },
-      ];
-
-      const body = {
-        model: 'mistral-small-latest',
-        stream: true,
-        messages: [
-          { role: 'system', content: prompt.system },
-          ...(prompt.history?.slice(-10) || []),
-          { role: 'user', content: prompt.user },
-        ],
-        temperature: 0.3,
-        max_tokens: 8000,
-      };
-
-      const headers = {
-        Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
-        'Content-Type': 'application/json',
-      };
+      const fullPrompt = prompt.system + '\n\n' +
+        (prompt.history?.slice(-10)?.map(m => `${m.role}: ${m.content}`).join('\n') || '') +
+        '\n\nUser: ' + prompt.user;
 
       let fullContent = '';
       const emittedSections = new Set<string>();
       let emittedPhaseCount = 0;
 
-      axios
-        .post(this.apiUrl, body, {
-          headers,
-          responseType: 'stream',
-          timeout: 600000,
-        })
-        .then((response) => {
-          const stream = response.data;
+      const runStream = async () => {
+        try {
+          const result = await this.model.generateContentStream({
+            contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 8000,
+            },
+          });
 
-          stream.on('data', (chunk: Buffer) => {
-            const lines = chunk
-              .toString()
-              .split('\n')
-              .filter((line) => line.trim() !== '');
+          for await (const chunk of result.stream) {
+            const content = chunk.text();
+            if (content) {
+              fullContent += content;
 
-            for (const line of lines) {
-              if (line.includes('[DONE]')) {
-                const estimatedTokens = Math.ceil(fullContent.length / 4);
-                this.logger.log(`STREAM_DONE TokensEstimated=${estimatedTokens} ContentLength=${fullContent.length}`);
+              const cleanedContent = this.cleanJsonContent(fullContent);
 
-                this.emitRemainingSections(
-                  fullContent,
-                  emittedSections,
-                  emittedPhaseCount,
-                  observer,
-                );
-
-                observer.next({
-                  type: 'complete',
-                  fullContent,
-                  estimatedTokens,
-                });
-                observer.complete();
-                return;
+              // Try to emit project section
+              if (!emittedSections.has('project')) {
+                if (this.isSectionComplete(cleanedContent, 'project')) {
+                  const projectData = this.extractSection(cleanedContent, 'project');
+                  if (projectData !== null) {
+                    emittedSections.add('project');
+                    observer.next({
+                      type: 'section',
+                      section: 'project',
+                      data: projectData,
+                      nextStatus: 'Duke krijuar fazën 1...',
+                    });
+                  }
+                }
               }
 
-              if (line.startsWith('data: ')) {
-                try {
-                  const dataStr = line.replace('data: ', '').trim();
-                  if (!dataStr) continue;
+              // Try to emit new phases
+              const newPhases = this.extractIndividualPhases(
+                cleanedContent,
+                emittedPhaseCount,
+              );
 
-                  const json = JSON.parse(dataStr);
-                  const content = json.choices?.[0]?.delta?.content;
-                  if (content) {
-                    fullContent += content;
+              for (const phase of newPhases) {
+                emittedPhaseCount++;
+                observer.next({
+                  type: 'phase',
+                  phaseIndex: phase.id || emittedPhaseCount,
+                  data: phase,
+                  nextStatus:
+                    emittedPhaseCount < 4
+                      ? `Duke krijuar fazën ${emittedPhaseCount + 1}...`
+                      : 'Duke përfunduar...',
+                });
+              }
 
-                    const cleanedContent = this.cleanJsonContent(fullContent);
-
-                    // Try to emit project section
-                    if (!emittedSections.has('project')) {
-                      if (this.isSectionComplete(cleanedContent, 'project')) {
-                        const projectData = this.extractSection(cleanedContent, 'project');
-                        if (projectData !== null) {
-                          emittedSections.add('project');
-                          observer.next({
-                            type: 'section',
-                            section: 'project',
-                            data: projectData,
-                            nextStatus: 'Duke krijuar fazën 1...',
-                          });
-                        }
-                      }
-                    }
-
-                    // Try to emit new phases
-                    const newPhases = this.extractIndividualPhases(
-                      cleanedContent,
-                      emittedPhaseCount,
-                    );
-
-                    for (const phase of newPhases) {
-                      emittedPhaseCount++;
-                      observer.next({
-                        type: 'phase',
-                        phaseIndex: phase.id || emittedPhaseCount,
-                        data: phase,
-                        nextStatus:
-                          emittedPhaseCount < 4
-                            ? `Duke krijuar fazën ${emittedPhaseCount + 1}...`
-                            : 'Duke përfunduar...',
-                      });
-                    }
-
-                    // Try to emit text_response
-                    if (!emittedSections.has('text_response')) {
-                      if (this.isSectionComplete(cleanedContent, 'text_response')) {
-                        const textData = this.extractSection(
-                          cleanedContent,
-                          'text_response',
-                        );
-                        if (textData !== null) {
-                          emittedSections.add('text_response');
-                          observer.next({
-                            type: 'section',
-                            section: 'text_response',
-                            data: textData,
-                            nextStatus: '',
-                          });
-                        }
-                      }
-                    }
+              // Try to emit text_response
+              if (!emittedSections.has('text_response')) {
+                if (this.isSectionComplete(cleanedContent, 'text_response')) {
+                  const textData = this.extractSection(
+                    cleanedContent,
+                    'text_response',
+                  );
+                  if (textData !== null) {
+                    emittedSections.add('text_response');
+                    observer.next({
+                      type: 'section',
+                      section: 'text_response',
+                      data: textData,
+                      nextStatus: '',
+                    });
                   }
-                } catch { }
+                }
               }
             }
+          }
+
+          // Stream finished
+          const estimatedTokens = Math.ceil(fullContent.length / 4);
+          this.logger.log(`TOKENS_STREAM_ESTIMATED=${estimatedTokens}`);
+
+          this.emitRemainingSections(
+            fullContent,
+            emittedSections,
+            emittedPhaseCount,
+            observer,
+          );
+
+          observer.next({
+            type: 'complete',
+            fullContent,
+            estimatedTokens,
           });
+          observer.complete();
+        } catch (err: any) {
+          this.logger.error(`Stream error: ${err.message}`);
+          observer.error(err);
+        }
+      };
 
-          stream.on('end', () => {
-            const estimatedTokens = Math.ceil(fullContent.length / 4);
-            this.logger.log(`TOKENS_STREAM_ESTIMATED=${estimatedTokens}`);
-
-            this.emitRemainingSections(
-              fullContent,
-              emittedSections,
-              emittedPhaseCount,
-              observer,
-            );
-
-            observer.next({
-              type: 'complete',
-              fullContent,
-              estimatedTokens,
-            });
-            observer.complete();
-          });
-
-          stream.on('error', (err: any) => observer.error(err));
-        })
-        .catch((err) => observer.error(err));
+      runStream();
     });
   }
 
