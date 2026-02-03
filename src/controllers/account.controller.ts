@@ -9,9 +9,10 @@ import {
   Query,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
   BadRequestException
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiBody,
@@ -81,12 +82,61 @@ export class AccountController {
     }
   }
 
+  @Post('/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload a single file to Cloudinary' })
+  @ApiConsumes('multipart/form-data')
+  async uploadFile(
+    @UploadedFile() file: any,
+    @Body('folder') folder: string = 'general',
+  ) {
+    if (!file) throw new BadRequestException('File is required');
+    try {
+      const result = await this.cloudinaryService.uploadFile(file, folder);
+      return {
+        message: 'File uploaded successfully',
+        data: {
+          url: result.secure_url,
+          id: result.public_id,
+        }
+      };
+    } catch (error: any) {
+      throw new BadRequestException(`Upload failed: ${error.message}`);
+    }
+  }
+
+  @Post('/upload-multiple')
+  @UseInterceptors(FilesInterceptor('files'))
+  @ApiOperation({ summary: 'Upload multiple files to Cloudinary' })
+  @ApiConsumes('multipart/form-data')
+  async uploadMultipleFiles(
+    @UploadedFiles() files: any[],
+    @Body('folder') folder: string = 'general',
+  ) {
+    if (!files || files.length === 0) throw new BadRequestException('Files are required');
+    try {
+      const uploadPromises = files.map(file => this.cloudinaryService.uploadFile(file, folder));
+      const results = await Promise.all(uploadPromises);
+      return {
+        message: 'Files uploaded successfully',
+        data: results.map(result => ({
+          url: result.secure_url,
+          id: result.public_id,
+        }))
+      };
+    } catch (error: any) {
+      throw new BadRequestException(`Upload failed: ${error.message}`);
+    }
+  }
+
   @Post('/create-company-account')
   @ApiOperation({ summary: 'Create a new company account' })
   @ApiBody({ type: CreateAccountDTO })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
-  async createCompanyAccount(@Body() data: CreateAccountDTO) {
+  async createCompanyAccount(@Body() body: any) {
+    const data = body.data ?? body;
     console.log({ data });
+
 
     const response = await this.accountService.createAccount(
       data,
@@ -102,7 +152,8 @@ export class AccountController {
   @ApiOperation({ summary: 'Create a new company account' })
   @ApiBody({ type: CreateAccountDTO })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
-  async createUserAccount(@Body() data: CreateUserAccountDTO) {
+  async createUserAccount(@Body() body: any) {
+    const data = body.data ?? body;
     console.log({ data });
 
     const response = await this.accountService.createAccount(
@@ -173,5 +224,23 @@ export class AccountController {
       message: 'Search results',
       data: companies,
     };
+  }
+
+  @Post('/forgot-password')
+  @ApiOperation({ summary: 'Send OTP to email for password reset' })
+  async forgotPassword(@Body() body: { email: string, language?: string }) {
+    return await this.accountService.sendResetOTP(body.email, body.language);
+  }
+
+  @Post('/verify-otp')
+  @ApiOperation({ summary: 'Verify OTP' })
+  async verifyOTP(@Body() body: { email: string, otp: string }) {
+    return await this.accountService.verifyOTP(body.email, body.otp);
+  }
+
+  @Post('/reset-password')
+  @ApiOperation({ summary: 'Reset password using OTP' })
+  async resetPassword(@Body() body: { email: string, otp: string, newPassword: any }) {
+    return await this.accountService.resetPassword(body.email, body.otp, body.newPassword);
   }
 }

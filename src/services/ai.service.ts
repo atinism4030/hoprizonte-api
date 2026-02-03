@@ -71,6 +71,8 @@ export class AiService {
       let fullContent = '';
       const emittedSections = new Set<string>();
       let emittedPhaseCount = 0;
+      let isTextResponseMode = false;
+      let lastEmittedTextLength = 0;
 
       const runStream = async () => {
         try {
@@ -89,6 +91,87 @@ export class AiService {
 
               const cleanedContent = this.cleanJsonContent(fullContent);
 
+              // Early detection: check if this is a text_response (not project/phases)
+              if (!isTextResponseMode && !emittedSections.has('project')) {
+                // If we see text_response pattern before project, it's a text response
+                if (cleanedContent.includes('"text_response"') && !cleanedContent.includes('"project"')) {
+                  isTextResponseMode = true;
+                }
+                // If we see project pattern, it's a construction response
+                if (cleanedContent.includes('"project"')) {
+                  isTextResponseMode = false;
+                }
+              }
+
+              // TEXT RESPONSE MODE: Stream characters as they come
+              if (isTextResponseMode && !emittedSections.has('text_response')) {
+                const textResponsePattern = /"text_response"\s*:\s*"/;
+                if (textResponsePattern.test(cleanedContent)) {
+                  // Extract the text content so far (everything after "text_response": " until end or closing quote)
+                  const startMatch = cleanedContent.match(/"text_response"\s*:\s*"/);
+                  if (startMatch) {
+                    const startIndex = cleanedContent.indexOf(startMatch[0]) + startMatch[0].length;
+                    let textContent = '';
+                    let i = startIndex;
+
+                    // Parse the string character by character, handling escapes
+                    while (i < cleanedContent.length) {
+                      if (cleanedContent[i] === '\\' && i + 1 < cleanedContent.length) {
+                        const nextChar = cleanedContent[i + 1];
+                        if (nextChar === 'n') {
+                          textContent += '\n';
+                          i += 2;
+                        } else if (nextChar === '"') {
+                          textContent += '"';
+                          i += 2;
+                        } else if (nextChar === '\\') {
+                          textContent += '\\';
+                          i += 2;
+                        } else if (nextChar === 't') {
+                          textContent += '\t';
+                          i += 2;
+                        } else {
+                          textContent += cleanedContent[i];
+                          i++;
+                        }
+                      } else if (cleanedContent[i] === '"') {
+                        // End of string
+                        break;
+                      } else {
+                        textContent += cleanedContent[i];
+                        i++;
+                      }
+                    }
+
+                    // Only emit if we have new characters
+                    if (textContent.length > lastEmittedTextLength) {
+                      lastEmittedTextLength = textContent.length;
+                      observer.next({
+                        type: 'text_chunk',
+                        data: textContent,
+                        nextStatus: '',
+                      });
+                    }
+                  }
+
+                  // Check if text_response is fully complete
+                  if (this.isSectionComplete(cleanedContent, 'text_response')) {
+                    const textData = this.extractSection(cleanedContent, 'text_response');
+                    if (textData !== null) {
+                      emittedSections.add('text_response');
+                      observer.next({
+                        type: 'section',
+                        section: 'text_response',
+                        data: textData,
+                        nextStatus: '',
+                      });
+                    }
+                  }
+                }
+                continue; // Skip project/phases processing in text mode
+              }
+
+              // PROJECT/PHASES MODE: Structured streaming (existing logic)
               // Try to emit project section
               if (!emittedSections.has('project')) {
                 if (this.isSectionComplete(cleanedContent, 'project')) {
@@ -122,25 +205,6 @@ export class AiService {
                       ? `Duke krijuar fazën ${emittedPhaseCount + 1}...`
                       : 'Duke përfunduar...',
                 });
-              }
-
-              // Try to emit text_response
-              if (!emittedSections.has('text_response')) {
-                if (this.isSectionComplete(cleanedContent, 'text_response')) {
-                  const textData = this.extractSection(
-                    cleanedContent,
-                    'text_response',
-                  );
-                  if (textData !== null) {
-                    emittedSections.add('text_response');
-                    observer.next({
-                      type: 'section',
-                      section: 'text_response',
-                      data: textData,
-                      nextStatus: '',
-                    });
-                  }
-                }
               }
             }
           }

@@ -10,16 +10,16 @@ export class StoryService {
   constructor(
     @InjectModel("Story") private readonly storyModel: Model<IStory>,
     private cloudinary: CloudinaryService,
-  ) {}
+  ) { }
 
   async create(dto: CreateStoryDto) {
-    console.log({dto});
-    
+    console.log({ dto });
+
     const story = await this.storyModel.create({
       ...dto,
       company: new Types.ObjectId(dto.company),
     });
-    console.log({story});
+    console.log({ story });
 
     return story;
   }
@@ -27,9 +27,9 @@ export class StoryService {
   async createWithFile(file: Express.Multer.File, companyId: string) {
     const uploadResult = await this.cloudinary.uploadFile(file);
 
-    const contentType = uploadResult.resource_type === 'video' 
-        ? EStoryContentTypes.VIDEO 
-        : EStoryContentTypes.IMAGE;
+    const contentType = uploadResult.resource_type === 'video'
+      ? EStoryContentTypes.VIDEO
+      : EStoryContentTypes.IMAGE;
 
     return this.storyModel.create({
       content: uploadResult.secure_url,

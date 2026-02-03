@@ -106,6 +106,11 @@ export class CreateAccountDTO {
     @IsOptional()
     @IsString()
     push_token: string;
+
+    @ApiProperty({ example: "https://maps.google.com/..." })
+    @IsOptional()
+    @IsString()
+    map_url: string;
 }
 
 export class CreateUserAccountDTO {

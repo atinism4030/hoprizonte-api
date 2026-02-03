@@ -71,4 +71,36 @@ export class EmailService {
             };
         }
     }
+
+    async sendOTPEmail(to: string, otp: string, language: string = 'sq'): Promise<{ success: boolean; message: string }> {
+        const translations: any = {
+            sq: {
+                subject: 'Kodi juaj i verifikimit',
+                body: `Kodi juaj për të rivendosur fjalëkalimin është: <b>${otp}</b>. Ky kod vlen për 30 minuta.`
+            },
+            en: {
+                subject: 'Your verification code',
+                body: `Your code to reset your password is: <b>${otp}</b>. This code is valid for 30 minutes.`
+            },
+            mk: {
+                subject: 'Вашиот верификациски код',
+                body: `Вашиот код за ресетирање на лозинката е: <b>${otp}</b>. Овој код важи 30 минути.`
+            }
+        };
+
+        const t = translations[language] || translations.sq;
+
+        try {
+            await this.transporter.sendMail({
+                from: process.env.SMTP_FROM || '"Horizonte" <etnikz2002@gmail.com>',
+                to,
+                subject: t.subject,
+                html: t.body,
+            });
+            return { success: true, message: 'Email sent' };
+        } catch (error) {
+            console.error('Email sending failed:', error);
+            return { success: false, message: 'Failed to send email' };
+        }
+    }
 }
