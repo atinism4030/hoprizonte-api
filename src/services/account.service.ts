@@ -1,33 +1,45 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { CreateAccountDTO, LoginDTO } from 'src/DTO/account.dto';
 import { EAccountType, IAccount } from 'src/types/account.types';
+import { IIndustry } from 'src/types/industry.types';
 import bcrypt from "bcrypt";
 import { generateAuthToken } from 'src/utils/token';
+import { EmailService } from './email.service';
 
 @Injectable()
 export class AccountService {
-  private readonly logger = new Logger(AccountService.name);
-
-  constructor(@InjectModel("Account") private readonly accountModel: Model<IAccount>) { }
+  constructor(
+    @InjectModel("Account") private readonly accountModel: Model<IAccount>,
+    @InjectModel("Industry") private readonly industryModel: Model<IIndustry>,
+    private readonly emailService: EmailService
+  ) { }
 
   async createAccount(createAccountDto: any, type: EAccountType) {
-    const salt = await bcrypt.genSaltSync(10);
-    console.log({ createAccountDto });
+    const existingAccount = await this.accountModel.findOne({ email: createAccountDto.email.toLowerCase() });
+    if (existingAccount) {
+      throw new ConflictException("Email already in use");
+    }
 
+    const salt = await bcrypt.genSaltSync(10);
     const hashedPassword = await bcrypt.hashSync(createAccountDto.password, salt);
 
     const payload = {
       ...createAccountDto,
       type,
       password: hashedPassword,
-      push_token: createAccountDto.push_token
+      push_token: createAccountDto.push_token,
+      email: createAccountDto.email.toLowerCase()
     }
 
-    const newAccount = this.accountModel.create(payload);
-    console.log({ newAccount });
-    return newAccount;
+    const newAccount = await this.accountModel.create(payload);
+    const token = await generateAuthToken(newAccount);
+
+    return {
+      account: newAccount,
+      token
+    };
   }
 
   async fetchAcocunts(type: EAccountType, select?: string) {
@@ -38,14 +50,12 @@ export class AccountService {
   async login(loginDTO: LoginDTO) {
     try {
       console.log({ loginDTO });
+      const email = loginDTO.email.toLowerCase();
 
-      const account = await this.accountModel.findOne({ email: loginDTO.email });
+      const account = await this.accountModel.findOne({ email });
 
       if (!account) {
-        return {
-          data: null,
-          message: "Account not found"
-        }
+        throw new NotFoundException("Account not found");
       }
 
       const push_token_has_changed = account.push_token !== loginDTO.push_token;
@@ -57,19 +67,12 @@ export class AccountService {
       console.log({ account });
 
 
-      let validPassword = await bcrypt.compareSync(loginDTO.password, account.password);
-      // if (account.type === "COMPANY") {
-      //   validPassword = (account.password == loginDTO.password)
-      // } else {
-      //   validPassword = await bcrypt.compareSync(loginDTO.password, account.password);
+      const validPassword = await bcrypt.compareSync(loginDTO.password, account.password);
 
       console.log({ validPassword });
 
       if (!validPassword) {
-        return {
-          data: null,
-          message: "Invalid credentials"
-        }
+        throw new UnauthorizedException("Invalid credentials");
       }
 
       const token = await generateAuthToken(account);
@@ -82,6 +85,9 @@ export class AccountService {
       }
     } catch (error) {
       console.log({ error });
+      if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new InternalServerErrorException()
     }
   }
@@ -122,14 +128,28 @@ export class AccountService {
     }
   }
 
-  async searchCompanies(query: string, limit: number = 10) {
+  async searchCompanies(query: string, limit: number = 20) {
     try {
+      if (!query || query.trim() === '') {
+        return await this.fetchAcocunts(EAccountType.COMPANY);
+      }
+
+      // Find industries that match the query
+      const industries = await this.industryModel.find({
+        name: { $regex: query, $options: 'i' }
+      }).select('_id');
+      const industryIds = industries.map(i => i._id);
+
       const companies = await this.accountModel.find({
         type: EAccountType.COMPANY,
-        name: { $regex: query, $options: 'i' }
-      })
-        .select('_id name thumbnail industries')
-        .populate('industries', 'name')
+        $or: [
+          { name: { $regex: query, $options: 'i' } },
+          { "services.name": { $regex: query, $options: 'i' } },
+          { industries: { $in: industryIds } }
+        ]
+      } as any)
+        .select("-password")
+        .populate('industries')
         .limit(limit)
         .exec();
 
@@ -140,4 +160,48 @@ export class AccountService {
     }
   }
 
+  async sendResetOTP(email: string, language: string = 'sq') {
+    const account = await this.accountModel.findOne({ email });
+    if (!account) throw new Error("Email not found");
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date();
+    expires.setMinutes(expires.getMinutes() + 30);
+
+    account.resetPasswordOTP = otp;
+    account.resetPasswordOTPExpires = expires;
+    await account.save();
+
+    await this.emailService.sendOTPEmail(email, otp, language);
+    return { message: "OTP sent successfully" };
+  }
+
+  async verifyOTP(email: string, otp: string) {
+    const account = await this.accountModel.findOne({
+      email,
+      resetPasswordOTP: otp,
+      resetPasswordOTPExpires: { $gt: new Date() }
+    });
+
+    if (!account) return { success: false, message: "Invalid or expired OTP" };
+    return { success: true, message: "OTP verified" };
+  }
+
+  async resetPassword(email: string, otp: string, newPassword: any) {
+    const account = await this.accountModel.findOne({
+      email,
+      resetPasswordOTP: otp,
+      resetPasswordOTPExpires: { $gt: new Date() }
+    });
+
+    if (!account) throw new Error("Invalid or expired OTP");
+
+    const salt = await bcrypt.genSaltSync(10);
+    account.password = await bcrypt.hashSync(newPassword, salt);
+    account.resetPasswordOTP = undefined;
+    account.resetPasswordOTPExpires = undefined;
+    await account.save();
+
+    return { message: "Password reset successfully" };
+  }
 }
