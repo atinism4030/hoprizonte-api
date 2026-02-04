@@ -1,10 +1,10 @@
-import { ConflictException, Injectable, InternalServerErrorException, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import bcrypt from "bcrypt";
 import { Model, ObjectId } from 'mongoose';
 import { CreateAccountDTO, LoginDTO } from 'src/DTO/account.dto';
 import { EAccountType, IAccount } from 'src/types/account.types';
 import { IIndustry } from 'src/types/industry.types';
-import bcrypt from "bcrypt";
 import { generateAuthToken } from 'src/utils/token';
 import { EmailService } from './email.service';
 
@@ -13,6 +13,7 @@ export class AccountService {
   constructor(
     @InjectModel("Account") private readonly accountModel: Model<IAccount>,
     @InjectModel("Industry") private readonly industryModel: Model<IIndustry>,
+    @InjectModel("DeletionReport") private readonly deletionReportModel: Model<any>,
     private readonly emailService: EmailService
   ) { }
 
@@ -120,10 +121,26 @@ export class AccountService {
 
   async deleteAccount(id: ObjectId) {
     try {
+      const account = await this.accountModel.findById(id);
+      if (!account) throw new NotFoundException("Account not found");
+
+      if (account.type === EAccountType.COMPANY) {
+        // Save report instead of deleting
+        await this.deletionReportModel.create({
+          accountId: id,
+          accountDetails: account.toObject(),
+        });
+
+        throw new BadRequestException("Business accounts cannot be deleted directly. Our team will contact you within 24 hours.");
+      }
+
       const deleted = await this.accountModel.findByIdAndDelete(id);
       return deleted;
     } catch (error) {
       console.log({ error });
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException()
     }
   }

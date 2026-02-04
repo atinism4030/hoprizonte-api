@@ -7,36 +7,37 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 import { AccountController } from './controllers/account.controller';
-import { StoryController } from './controllers/story.controller';
-import { ProjectController } from './controllers/project.controller';
 import { ChatController } from './controllers/chat.controller';
+import { ProjectController } from './controllers/project.controller';
+import { StoryController } from './controllers/story.controller';
 
-import { AccountService } from './services/account.service';
-import { StoryService } from './services/story.service';
-import { ProjectService } from './services/project.service';
-import { ChatService } from './services/chat.service';
-import { AccountSchema } from './models/Account.model';
-import { TestingController } from './controllers/testing.controller';
-import { TestingService } from './services/testing.service';
-import { IndustrySchema } from './models/industry.model';
-import { IndustryController } from './controllers/industry.controller';
-import { IndustryService } from './services/industry.service';
-import { AiController } from './controllers/ai.controller';
-import { AiService } from './services/ai.service';
 import { HttpModule } from '@nestjs/axios';
-import { StorySchema } from './models/Story.model';
-import { CloudinaryService } from './services/cloudinary.service';
-import { ProjectSchema } from './models/Project.model';
-import { ChatSessionSchema } from './models/ChatSession.model';
-import { InvoiceSchema } from './models/Invoice.model';
-import { InvoiceController } from './controllers/invoice.controller';
-import { InvoiceService } from './services/invoice.service';
-import { ClientSchema } from './models/Client.model';
+import { AiController } from './controllers/ai.controller';
 import { ClientController } from './controllers/client.controller';
-import { ClientService } from './services/client.service';
-import { GoogleDriveService } from './services/google-drive.service';
-import { EmailService } from './services/email.service';
+import { IndustryController } from './controllers/industry.controller';
+import { InvoiceController } from './controllers/invoice.controller';
 import { SocialMediaController } from './controllers/social-media.controller';
+import { TestingController } from './controllers/testing.controller';
+import { AccountSchema } from './models/Account.model';
+import { ChatSessionSchema } from './models/ChatSession.model';
+import { ClientSchema } from './models/Client.model';
+import { DeletionReportSchema } from './models/DeletionReport.model';
+import { IndustrySchema } from './models/industry.model';
+import { InvoiceSchema } from './models/Invoice.model';
+import { ProjectSchema } from './models/Project.model';
+import { StorySchema } from './models/Story.model';
+import { AccountService } from './services/account.service';
+import { AiService } from './services/ai.service';
+import { ChatService } from './services/chat.service';
+import { ClientService } from './services/client.service';
+import { CloudinaryService } from './services/cloudinary.service';
+import { EmailService } from './services/email.service';
+import { GoogleDriveService } from './services/google-drive.service';
+import { IndustryService } from './services/industry.service';
+import { InvoiceService } from './services/invoice.service';
+import { ProjectService } from './services/project.service';
+import { StoryService } from './services/story.service';
+import { TestingService } from './services/testing.service';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { SocialMediaController } from './controllers/social-media.controller';
     MongooseModule.forFeature([{ name: "ChatSession", schema: ChatSessionSchema }]),
     MongooseModule.forFeature([{ name: "Invoice", schema: InvoiceSchema }]),
     MongooseModule.forFeature([{ name: "Client", schema: ClientSchema }]),
+    MongooseModule.forFeature([{ name: "DeletionReport", schema: DeletionReportSchema }]),
 
     ScheduleModule.forRoot(),
     HttpModule
