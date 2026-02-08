@@ -44,7 +44,7 @@ export class AccountService {
   }
 
   async fetchAcocunts(type: EAccountType, select?: string) {
-    const accounts = await this.accountModel.find({ type: type }).select(select ? select : "-password").populate("industries").sort({ createdAt: "desc" });
+    const accounts = await this.accountModel.find({ type: type, is_active: { $ne: false } }).select(select ? select : "-password").populate("industries").sort({ createdAt: "desc" });
     return accounts;
   }
 
@@ -54,7 +54,6 @@ export class AccountService {
       const email = loginDTO.email.toLowerCase();
 
       const account = await this.accountModel.findOne({ email });
-
       if (!account) {
         throw new NotFoundException("Account not found");
       }
@@ -95,7 +94,7 @@ export class AccountService {
 
   async getCompanyById(id: ObjectId) {
     try {
-      const company = await this.accountModel.findById(id).select("-password");
+      const company = await this.accountModel.findOne({ _id: id }).select("-password");
       return company;
     } catch (error) {
       console.log({ error });
@@ -151,7 +150,6 @@ export class AccountService {
         return await this.fetchAcocunts(EAccountType.COMPANY);
       }
 
-      // Find industries that match the query
       const industries = await this.industryModel.find({
         name: { $regex: query, $options: 'i' }
       }).select('_id');
@@ -159,6 +157,7 @@ export class AccountService {
 
       const companies = await this.accountModel.find({
         type: EAccountType.COMPANY,
+        is_active: { $ne: false },
         $or: [
           { name: { $regex: query, $options: 'i' } },
           { "services.name": { $regex: query, $options: 'i' } },

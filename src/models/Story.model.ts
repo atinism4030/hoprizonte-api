@@ -19,8 +19,12 @@ export const StorySchema = new mongoose.Schema(
 
     views: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Account",
+        viewer: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Account",
+          required: false,
+        },
+        viewedAt: { type: Date, default: Date.now },
       },
     ],
 

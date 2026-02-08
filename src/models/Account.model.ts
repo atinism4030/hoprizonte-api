@@ -44,6 +44,8 @@ export const AccountSchema = new mongoose.Schema({
     map_url: { type: String },
     resetPasswordOTP: { type: String },
     resetPasswordOTPExpires: { type: Date },
+    is_active: { type: Boolean, default: true },
+    is_hiring: { type: Boolean, default: false },
 }, { timestamps: true })
 
 AccountSchema.methods.generateAuthToken = function (data: Partial<IAccount>) {

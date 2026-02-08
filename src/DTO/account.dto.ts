@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEmail, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsArray, IsBoolean, IsEmail, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
 import { EIndustries } from "src/types/industries.types";
 
 export class CreateAccountDTO {
@@ -111,6 +111,14 @@ export class CreateAccountDTO {
     @IsOptional()
     @IsString()
     map_url: string;
+
+    @IsOptional()
+    @IsBoolean()
+    is_active?: boolean;
+
+    @IsOptional()
+    @IsBoolean()
+    is_hiring?: boolean;
 }
 
 export class CreateUserAccountDTO {

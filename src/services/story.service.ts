@@ -40,10 +40,16 @@ export class StoryService {
   }
 
   async findAll() {
-    return this.storyModel
+    const stories = await this.storyModel
       .find()
-      .populate("company", "name thumbnail type")
+      .populate({
+        path: "company",
+        select: "name thumbnail type is_active",
+        match: { is_active: { $ne: false } }
+      })
       .sort({ createdAt: -1 });
+
+    return stories.filter(story => story.company);
   }
 
   async findById(id: string) {
@@ -68,5 +74,85 @@ export class StoryService {
   async delete(id: string) {
     return this.storyModel
       .findByIdAndDelete(id)
+  }
+
+  async trackView(id: string, viewerId?: string) {
+    const updateData: any = {
+      $push: {
+        views: {
+          viewer: viewerId ? new Types.ObjectId(viewerId) : null,
+          viewedAt: new Date(),
+        },
+      },
+      $inc: { total_views_count: 1 },
+    };
+
+    return this.storyModel.findByIdAndUpdate(id, updateData, { new: true });
+  }
+
+  async getAnalytics(id: string) {
+    const story = await this.storyModel
+      .findById(id)
+      .populate("views.viewer", "name type thumbnail");
+
+    if (!story) {
+      throw new NotFoundException("Story not found");
+    }
+
+    const start = new Date(story.createdAt);
+    start.setMinutes(0, 0, 0);
+    const now = new Date();
+
+    const hourlyData: { label: string, value: number, timestamp: number }[] = [];
+    let current = new Date(start);
+
+    while (current <= now) {
+      const label = `${current.getHours().toString().padStart(2, '0')}:00`;
+      hourlyData.push({ label, value: 0, timestamp: current.getTime() });
+      current = new Date(current.getTime() + 60 * 60 * 1000);
+    }
+
+    const formattedViews = story.views.map((view: any) => {
+      let viewerName = "Pa llogari";
+      let viewerThumbnail = null;
+      let viewerType = "ANONYMOUS";
+
+      const viewDate = new Date(view.viewedAt);
+      viewDate.setMinutes(0, 0, 0);
+      const viewTime = viewDate.getTime();
+
+      const dataPoint = hourlyData.find(d => d.timestamp === viewTime);
+      if (dataPoint) {
+        dataPoint.value++;
+      }
+
+      if (view.viewer) {
+        viewerType = view.viewer.type;
+        viewerThumbnail = view.viewer.thumbnail;
+
+        if (view.viewer.type === "COMPANY") {
+          viewerName = "Biznes";
+        } else {
+          viewerName = view.viewer.name || "User";
+        }
+      }
+
+      return {
+        name: viewerName,
+        type: viewerType,
+        thumbnail: viewerThumbnail,
+        viewedAt: view.viewedAt,
+      };
+    });
+
+    return {
+      total_views: story.total_views_count || 0,
+      unique_viewers: new Set(story?.views?.filter(v => v.viewer)?.map(v => v?.viewer?.toString()))?.size,
+      views: formattedViews.reverse(),
+      hourly_distribution: {
+        labels: hourlyData.map(d => d.label),
+        values: hourlyData.map(d => d.value),
+      },
+    };
   }
 }

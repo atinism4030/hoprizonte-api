@@ -5,9 +5,9 @@ import { StoryService } from "src/services/story.service";
 
 @Controller("stories")
 export class StoryController {
-  constructor(private readonly storyService: StoryService) {}
+  constructor(private readonly storyService: StoryService) { }
 
-@Post("/create-story")
+  @Post("/create-story")
   @UseInterceptors(FileInterceptor('file'))
   async create(
     @UploadedFile() file: Express.Multer.File,
@@ -33,5 +33,18 @@ export class StoryController {
   @Delete("/:id")
   delete(@Param("id") id: string) {
     return this.storyService.delete(id);
+  }
+
+  @Post("/:id/view")
+  trackView(
+    @Param("id") id: string,
+    @Body("viewerId") viewerId?: string
+  ) {
+    return this.storyService.trackView(id, viewerId);
+  }
+
+  @Get("/:id/analytics")
+  getAnalytics(@Param("id") id: string) {
+    return this.storyService.getAnalytics(id);
   }
 }
