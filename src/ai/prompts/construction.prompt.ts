@@ -1,6 +1,7 @@
 export const CONSTRUCTION_PROMPT = `
 Construction logic:
-- Phase-based planning
+- EXACTLY 4 Phase-based planning (Mandatory)
+- Never return fewer than 4 phases
 - Each phase has cost, time, risks
 - risk_analysis is mandatory
 - Describe real-world mistakes

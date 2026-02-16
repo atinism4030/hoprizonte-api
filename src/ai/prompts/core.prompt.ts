@@ -10,7 +10,7 @@ Rregulla të detyrueshme:
 
 export const CONSTRUCTION_PROMPT = `
 Konteksti ndërtim/renovim:
-- Krijo plan me faza, detyra, materiale, kohë, kosto (intervale)
+- Krijo plan me EXACTLY 4 faza (DETYRUESHME), detyra, materiale, kohë, kosto (intervale)
 - risk_analysis është e detyrueshme për çdo fazë
 - risk_analysis: gabim → pse ndodh → pasojë → çfarë shmanget
 - impact_level: HIGH|MEDIUM|LOW

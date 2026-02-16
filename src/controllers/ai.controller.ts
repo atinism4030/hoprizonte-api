@@ -143,7 +143,8 @@ CRITICAL RULES:
 2. ALWAYS respond with valid JSON. No markdown code blocks, no plain text outside JSON.
 3. For construction/renovation planning requests, return the project/phases structure (Option 1).
 4. For related follow-ups, calculations, tips, or company recommendations, return text_response (Option 2).
-5. NEVER leave any phase's "works" array empty. Each phase MUST have at least 3-5 works.
+5. MANDATORY 4 PHASES: Every construction project MUST have EXACTLY 4 phases. This is a strict requirement. Never return fewer than 4 phases.
+6. NEVER leave any phase's "works" array empty. Each phase MUST have at least 2-6 detailed work items.
 
 RESPONSE FORMAT - ALWAYS USE ONE OF THESE:
 
@@ -171,7 +172,7 @@ CRITICAL FOR text_response:
 
 IMPORTANT: If the user asks a follow-up question about a previous project (like "what's the total cost of phase 1?" or "explain phase 2"), you MUST respond with Option 2 (text_response). Calculate and provide the answer based on the conversation history.
 
-For ANY construction/renovation request, use this EXACT structure for phases:
+For ANY construction/renovation request, you MUST use this EXACT structure with ALL 4 PHASES populated:
 
 {
   "project": {
@@ -220,24 +221,54 @@ For ANY construction/renovation request, use this EXACT structure for phases:
       "id": 2,
       "name": "${targetPhases[1]}",
       "task_count": 5,
-      "works": []
+      "works": [
+        {
+          "task": "Detyra Shembull",
+          "description": "Përshkrimi i detyrës",
+          "cost_range_eur": "€...",
+          "time_duration": "...",
+          "whats_included": [],
+          "pro_tips": [],
+          "suggested_companies": []
+        }
+      ]
     },
     {
       "id": 3,
       "name": "${targetPhases[2]}",
       "task_count": 8,
-      "works": []
+      "works": [
+        {
+          "task": "Detyra Shembull",
+          "description": "Përshkrimi i detyrës",
+          "cost_range_eur": "€...",
+          "time_duration": "...",
+          "whats_included": [],
+          "pro_tips": [],
+          "suggested_companies": []
+        }
+      ]
     },
     {
       "id": 4,
       "name": "${targetPhases[3]}",
       "task_count": 4,
-      "works": []
+      "works": [
+        {
+          "task": "Detyra Shembull",
+          "description": "Përshkrimi i detyrës",
+          "cost_range_eur": "€...",
+          "time_duration": "...",
+          "whats_included": [],
+          "pro_tips": [],
+          "suggested_companies": []
+        }
+      ]
     }
   ]
 }
 
-MANDATORY PHASE STRUCTURE - ALL 4 PHASES MUST HAVE WORKS:
+MANDATORY PHASE STRUCTURE - YOU MUST GENERATE ALL 4 PHASES WITH AT LEAST 2-6 WORKS EACH:
 
 Phase 1 - ${targetPhases[0]} (3-5 works):
 - Initial assessment/inspection
@@ -295,9 +326,10 @@ AVAILABLE INDUSTRIES:
 ${JSON.stringify(industries.map(i => i.name), null, 2)}
 
 REMEMBER: 
-1. All 4 phases MUST have populated "works" arrays for construction projects.
-2. For follow-up questions, ALWAYS use {"text_response": "..."} format.
-3. NEVER respond with plain text - ALWAYS use JSON!
+1. EVERY construction project MUST HAVE ALL 4 PHASES. DO NOT SKIP ANY PHASE.
+2. ALL 4 phases MUST have populated "works" arrays (at least 2 items each).
+3. For follow-up questions, ALWAYS use {"text_response": "..."} format.
+4. NEVER respond with plain text - ALWAYS use JSON!
 `;
 
     return {
