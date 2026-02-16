@@ -16,6 +16,26 @@ export class ChatController {
         }
     }
 
+    @Get('admin/sessions')
+    async getAllSessions() {
+        try {
+            const sessions = await this.chatService.getAllSessions();
+            return { success: true, sessions };
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Get('admin/analytics')
+    async getGlobalAnalytics() {
+        try {
+            const analytics = await this.chatService.getGlobalAnalytics();
+            return { success: true, analytics };
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @Get('sessions')
     async getUserSessions(@Query('userId') userId: string) {
         if (!userId) {
