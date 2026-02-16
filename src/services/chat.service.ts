@@ -22,7 +22,7 @@ export class ChatService {
             title: dto.title || 'New Chat',
             messages: [],
             totalTokens: 0,
-            tokenLimit: 8000,
+            tokenLimit: 100000,
             isActive: true,
             lastMessageAt: new Date()
         });
@@ -60,6 +60,11 @@ export class ChatService {
         const session = await this.chatSessionModel.findById(dto.sessionId);
         if (!session) {
             throw new NotFoundException('Chat session not found');
+        }
+
+        // Auto-upgrade token limit for old sessions
+        if (session.tokenLimit < 100000) {
+            session.tokenLimit = 100000;
         }
 
         const textContent = dto.text || (dto.sections ? JSON.stringify(dto.sections) : '');

@@ -29,7 +29,7 @@ export class AiService {
 
   constructor() {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
 
@@ -43,7 +43,7 @@ export class AiService {
         contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 4000,
+          maxOutputTokens: 8192,
         },
       });
 
@@ -80,7 +80,7 @@ export class AiService {
             contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
             generationConfig: {
               temperature: 0.3,
-              maxOutputTokens: 8000,
+              maxOutputTokens: 8192,
             },
           });
 
@@ -91,30 +91,24 @@ export class AiService {
 
               const cleanedContent = this.cleanJsonContent(fullContent);
 
-              // Early detection: check if this is a text_response (not project/phases)
               if (!isTextResponseMode && !emittedSections.has('project')) {
-                // If we see text_response pattern before project, it's a text response
                 if (cleanedContent.includes('"text_response"') && !cleanedContent.includes('"project"')) {
                   isTextResponseMode = true;
                 }
-                // If we see project pattern, it's a construction response
                 if (cleanedContent.includes('"project"')) {
                   isTextResponseMode = false;
                 }
               }
 
-              // TEXT RESPONSE MODE: Stream characters as they come
               if (isTextResponseMode && !emittedSections.has('text_response')) {
                 const textResponsePattern = /"text_response"\s*:\s*"/;
                 if (textResponsePattern.test(cleanedContent)) {
-                  // Extract the text content so far (everything after "text_response": " until end or closing quote)
                   const startMatch = cleanedContent.match(/"text_response"\s*:\s*"/);
                   if (startMatch) {
                     const startIndex = cleanedContent.indexOf(startMatch[0]) + startMatch[0].length;
                     let textContent = '';
                     let i = startIndex;
 
-                    // Parse the string character by character, handling escapes
                     while (i < cleanedContent.length) {
                       if (cleanedContent[i] === '\\' && i + 1 < cleanedContent.length) {
                         const nextChar = cleanedContent[i + 1];
@@ -135,7 +129,6 @@ export class AiService {
                           i++;
                         }
                       } else if (cleanedContent[i] === '"') {
-                        // End of string
                         break;
                       } else {
                         textContent += cleanedContent[i];
@@ -143,7 +136,6 @@ export class AiService {
                       }
                     }
 
-                    // Only emit if we have new characters
                     if (textContent.length > lastEmittedTextLength) {
                       lastEmittedTextLength = textContent.length;
                       observer.next({

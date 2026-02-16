@@ -56,13 +56,11 @@ export class AiController {
 
     const industries = await this.industryService.getAll('name');
 
-    // Fetch limited companies to prevent prompt bloat
     const allCompanies = await this.accountService.fetchAcocunts(
       EAccountType.COMPANY,
       "name services address industries reviews"
     );
 
-    // Randomize and limit to 20 relevant companies
     const companies = allCompanies
       .sort(() => 0.5 - Math.random())
       .slice(0, 20);
@@ -189,31 +187,13 @@ For ANY construction/renovation request, you MUST use this EXACT structure with 
       "task_count": 5,
       "works": [
         {
-          "task": "Vlerësim Fillestar",
-          "description": "Vlerësim i gjendjes aktuale dhe përcaktim i nevojave",
+          "task": "Detyra 1",
+          "description": "Përshkrimi i detyrës",
           "cost_range_eur": "€100 - €300",
           "time_duration": "1-3 ditë",
-          "whats_included": [
-            "Inspektim vizual i strukturës",
-            "Konsultim me arkitekt",
-            "Përcaktim i materialeve të nevojshme"
-          ],
-          "pro_tips": [
-            "Merrni fotografi të detajuara para fillimit",
-            "Konsultohuni me profesionistë për zgjidhje ekonomike"
-          ],
-          "suggested_companies": [
-            {
-              "id": "company_id_here",
-              "name": "Company Name",
-              "industry": "Relevant Industry",
-              "rating": 4.8,
-              "verified": true,
-              "price_range": "€100 - €200",
-              "timeline": "1-2 ditë",
-              "location": "City Name"
-            }
-          ]
+          "whats_included": ["item1", "item2"],
+          "pro_tips": ["tip1"],
+          "suggested_companies": []
         }
       ]
     },
@@ -223,12 +203,12 @@ For ANY construction/renovation request, you MUST use this EXACT structure with 
       "task_count": 5,
       "works": [
         {
-          "task": "Detyra Shembull",
+          "task": "Detyra 1",
           "description": "Përshkrimi i detyrës",
-          "cost_range_eur": "€...",
-          "time_duration": "...",
-          "whats_included": [],
-          "pro_tips": [],
+          "cost_range_eur": "€100 - €300",
+          "time_duration": "1-3 ditë",
+          "whats_included": ["item1", "item2"],
+          "pro_tips": ["tip1"],
           "suggested_companies": []
         }
       ]
@@ -239,12 +219,12 @@ For ANY construction/renovation request, you MUST use this EXACT structure with 
       "task_count": 8,
       "works": [
         {
-          "task": "Detyra Shembull",
+          "task": "Detyra 1",
           "description": "Përshkrimi i detyrës",
-          "cost_range_eur": "€...",
-          "time_duration": "...",
-          "whats_included": [],
-          "pro_tips": [],
+          "cost_range_eur": "€100 - €300",
+          "time_duration": "1-3 ditë",
+          "whats_included": ["item1", "item2"],
+          "pro_tips": ["tip1"],
           "suggested_companies": []
         }
       ]
@@ -255,12 +235,12 @@ For ANY construction/renovation request, you MUST use this EXACT structure with 
       "task_count": 4,
       "works": [
         {
-          "task": "Detyra Shembull",
+          "task": "Detyra 1",
           "description": "Përshkrimi i detyrës",
-          "cost_range_eur": "€...",
-          "time_duration": "...",
-          "whats_included": [],
-          "pro_tips": [],
+          "cost_range_eur": "€100 - €300",
+          "time_duration": "1-3 ditë",
+          "whats_included": ["item1", "item2"],
+          "pro_tips": ["tip1"],
           "suggested_companies": []
         }
       ]
