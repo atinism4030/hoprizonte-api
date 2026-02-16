@@ -29,7 +29,7 @@ export class AiController {
       return { response: response, success: true };
     } catch (error) {
       console.error('AI generation error:', error);
-      return { error: 'Gabim gjatë përpunimit të kërkesës', success: false };
+      return { error: `Gabim gjatë përpunimit: ${error.message}`, success: false };
     }
   }
 
@@ -61,9 +61,10 @@ export class AiController {
       "name services address industries reviews"
     );
 
+    // Limit to 10 companies to keep prompt size manageable and prevent output truncation
     const companies = allCompanies
       .sort(() => 0.5 - Math.random())
-      .slice(0, 20);
+      .slice(0, 10);
 
     console.log(`Building prompt for user: ${prompt.substring(0, 50)}... with ${companies.length} companies and ${history.length} messages in history.`);
 
@@ -80,7 +81,7 @@ export class AiController {
       },
       error: (err) => {
         console.error('Stream error:', err);
-        res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ error: `Stream error: ${err.message}` })}\n\n`);
         res.end();
       },
       complete: () => {
