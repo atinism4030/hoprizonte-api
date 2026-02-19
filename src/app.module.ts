@@ -10,6 +10,7 @@ import { AccountController } from './controllers/account.controller';
 import { ChatController } from './controllers/chat.controller';
 import { ProjectController } from './controllers/project.controller';
 import { StoryController } from './controllers/story.controller';
+import { FinanceController } from './controllers/finance.controller';
 
 import { HttpModule } from '@nestjs/axios';
 import { AiController } from './controllers/ai.controller';
@@ -18,6 +19,7 @@ import { IndustryController } from './controllers/industry.controller';
 import { InvoiceController } from './controllers/invoice.controller';
 import { SocialMediaController } from './controllers/social-media.controller';
 import { ContentScheduleSchema } from './models/ContentSchedule.model';
+import { FinanceSchema } from './models/Finance.model';
 import { ContentScheduleService } from './services/content-schedule.service';
 import { TestingController } from './controllers/testing.controller';
 import { AccountSchema } from './models/Account.model';
@@ -40,6 +42,7 @@ import { InvoiceService } from './services/invoice.service';
 import { ProjectService } from './services/project.service';
 import { StoryService } from './services/story.service';
 import { TestingService } from './services/testing.service';
+import { FinanceService } from './services/finance.service';
 
 @Module({
   imports: [
@@ -65,6 +68,7 @@ import { TestingService } from './services/testing.service';
     MongooseModule.forFeature([{ name: "Client", schema: ClientSchema }]),
     MongooseModule.forFeature([{ name: "DeletionReport", schema: DeletionReportSchema }]),
     MongooseModule.forFeature([{ name: "ContentSchedule", schema: ContentScheduleSchema }]),
+    MongooseModule.forFeature([{ name: "Finance", schema: FinanceSchema }]),
 
     ScheduleModule.forRoot(),
     HttpModule
@@ -81,7 +85,8 @@ import { TestingService } from './services/testing.service';
     AiController,
     InvoiceController,
     ClientController,
-    SocialMediaController
+    SocialMediaController,
+    FinanceController
   ],
 
   providers: [
@@ -98,7 +103,8 @@ import { TestingService } from './services/testing.service';
     ClientService,
     GoogleDriveService,
     EmailService,
-    ContentScheduleService
+    ContentScheduleService,
+    FinanceService
   ],
 })
 export class AppModule { }
