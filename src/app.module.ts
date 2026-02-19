@@ -17,6 +17,8 @@ import { ClientController } from './controllers/client.controller';
 import { IndustryController } from './controllers/industry.controller';
 import { InvoiceController } from './controllers/invoice.controller';
 import { SocialMediaController } from './controllers/social-media.controller';
+import { ContentScheduleSchema } from './models/ContentSchedule.model';
+import { ContentScheduleService } from './services/content-schedule.service';
 import { TestingController } from './controllers/testing.controller';
 import { AccountSchema } from './models/Account.model';
 import { ChatSessionSchema } from './models/ChatSession.model';
@@ -62,6 +64,7 @@ import { TestingService } from './services/testing.service';
     MongooseModule.forFeature([{ name: "Invoice", schema: InvoiceSchema }]),
     MongooseModule.forFeature([{ name: "Client", schema: ClientSchema }]),
     MongooseModule.forFeature([{ name: "DeletionReport", schema: DeletionReportSchema }]),
+    MongooseModule.forFeature([{ name: "ContentSchedule", schema: ContentScheduleSchema }]),
 
     ScheduleModule.forRoot(),
     HttpModule
@@ -95,7 +98,7 @@ import { TestingService } from './services/testing.service';
     ClientService,
     GoogleDriveService,
     EmailService,
-    CloudinaryService
+    ContentScheduleService
   ],
 })
 export class AppModule { }
