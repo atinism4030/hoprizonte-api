@@ -32,7 +32,6 @@ export class AiService {
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
-
   async generate(prompt: Prompt): Promise<string> {
     const fullPrompt = prompt.system + '\n\n' +
       (prompt.history?.map(m => `${m.role}: ${m.content}`).join('\n') || '') +
@@ -559,6 +558,7 @@ export class AiService {
     - NO comments
     - Currency is MKD default, but if its not specified by the user please ask them
     - Prices must be the one that the user tells in their prompt
+    - NEVER show or include company ratings
     - If data is missing, ask the user again for things that are missing or you dont understand
 
     JSON FORMAT:

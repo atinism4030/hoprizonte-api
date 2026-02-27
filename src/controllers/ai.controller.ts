@@ -103,7 +103,6 @@ export class AiController {
       name: c.name,
       address: c.address,
       industries: c.industries?.map((i: any) => i.name) || [],
-      rating: c.reviews?.avg_score || (4.5 + Math.random() * 0.5),
       verified: true,
       services: c.services || []
     }));
@@ -138,7 +137,8 @@ CRITICAL RULES:
 1. DOMAIN RESTRICTION: You are STRICTLY limited to construction planning, renovations, electricity, architecture, building tips, and RECOMMENDING companies for these services.
    - If the user asks about ANY other topic (e.g., programming, cooking, history, arts, general help, etc.), you MUST politely refuse.
    - If the user asks for company recommendations or professionals (e.g., "Kush mund të më bëjë rrymën?"), use text_response (Option 2) to suggest specific companies from the **AVAILABLE COMPANIES** list below.
-   - For each recommended company, mention their name, rating, address, and why they fit the user's request based on their services.
+   - For each recommended company, mention their name, address, and why they fit the user's request based on their services. DO NOT show any ratings.
+   - CRITICAL: When mentioning a company name in text_response, ALWAYS format it as a markdown link using the company's ID: [Company Name](company://COMPANY_ID). Example: [Kompania ABC](company://507f1f77bcf86cd799439011). This allows users to tap on the company name to view their full profile.
 2. ALWAYS respond with valid JSON. No markdown code blocks, no plain text outside JSON.
 3. For construction/renovation planning requests, return the project/phases structure (Option 1).
 4. For related follow-ups, calculations, tips, or company recommendations, return text_response (Option 2).
@@ -293,7 +293,7 @@ PRICE CALCULATION RULES:
 COMPANY MATCHING RULES:
 1. Match company industries AND services to the specific work type
 2. A company is only relevant if their services.name matches the work
-3. Use the company's actual data: id, name, rating, address (as location)
+3. Use the company's actual data: id, name, address (as location). Never mention or show ratings.
 4. Set verified: true for all companies in the database
 5. price_range should come from the company's services.price field
 6. Recommend 1-2 companies per work item

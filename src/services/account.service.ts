@@ -94,7 +94,7 @@ export class AccountService {
 
   async getCompanyById(id: ObjectId) {
     try {
-      const company = await this.accountModel.findOne({ _id: id }).select("-password");
+      const company = await this.accountModel.findOne({ _id: id }).select("-password").populate('industries');
       return company;
     } catch (error) {
       console.log({ error });
