@@ -53,6 +53,10 @@ export class SocialMediaController {
       image_selected?: boolean;
       image_edited?: boolean;
       posted?: boolean;
+      schedule_date?: string;
+      description?: string;
+      hashtags?: string;
+      social_tags?: string;
     },
   ) {
     const { company_name, week_start, ...patch } = body;
