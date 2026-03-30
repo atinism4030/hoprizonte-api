@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as bodyParser from 'body-parser';
+import axios from 'axios';
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -17,6 +19,14 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`Application is running on: ${await app.getUrl()}`);
+
+  const API_URL = 'https://empire-tycoon-api.onrender.com';
+  setInterval(async () => {
+    try {
+      await axios.get(API_URL);
+    } catch (error) {
+    }
+  }, 10000);
 }
 
 bootstrap();
