@@ -46,6 +46,12 @@ export const AccountSchema = new mongoose.Schema({
     resetPasswordOTPExpires: { type: Date },
     is_active: { type: Boolean, default: true },
     is_hiring: { type: Boolean, default: false },
+    start_date: { type: Date },
+    social_tags: {
+        instagram: String,
+        facebook: String,
+        tiktok: String
+    }
 }, { timestamps: true })
 
 AccountSchema.methods.generateAuthToken = function (data: Partial<IAccount>) {

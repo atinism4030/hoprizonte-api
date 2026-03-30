@@ -16,7 +16,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@nestjs/axios": "^4.0.1",
-    "@nestjs/common": "^11.0.1",
+    "@nestjs/common": "^11.1.16",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/mongoose": "^11.0.3",
@@ -30,7 +30,7 @@
     "cloudinary": "^2.8.0",
     "googleapis": "^169.0.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^9.0.0",
+    "mongoose": "^9.2.4",
     "nodemailer": "^7.0.12",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

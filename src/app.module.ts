@@ -43,6 +43,8 @@ import { ProjectService } from './services/project.service';
 import { StoryService } from './services/story.service';
 import { TestingService } from './services/testing.service';
 import { FinanceService } from './services/finance.service';
+import { MetaGraphService } from './services/meta-graph.service';
+import { InstagramSchedulerService } from './services/instagram-scheduler.service';
 
 @Module({
   imports: [
@@ -104,7 +106,9 @@ import { FinanceService } from './services/finance.service';
     GoogleDriveService,
     EmailService,
     ContentScheduleService,
-    FinanceService
+    FinanceService,
+    MetaGraphService,
+    InstagramSchedulerService
   ],
 })
 export class AppModule { }

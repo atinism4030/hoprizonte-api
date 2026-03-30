@@ -7,6 +7,13 @@ const WeekEntrySchema = new mongoose.Schema({
     image_selected: { type: Boolean, default: false },
     image_edited: { type: Boolean, default: false },
     posted: { type: Boolean, default: false },
+    schedule_date: { type: Date, default: null },
+    description: { type: String, default: "" },
+    hashtags: { type: String, default: "" },
+    social_tags: { type: String, default: "" },
+    ig_container_id: { type: String, default: null },
+    ig_publish_at: { type: Date, default: null },
+    ig_published: { type: Boolean, default: false },
 });
 
 export const ContentScheduleSchema = new mongoose.Schema(
