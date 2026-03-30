@@ -24,7 +24,9 @@ async function bootstrap() {
   setInterval(async () => {
     try {
       await axios.get(API_URL);
+      console.log("API is running");
     } catch (error) {
+      console.log("API is not running");
     }
   }, 10000);
 }
