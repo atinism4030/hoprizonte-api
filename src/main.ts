@@ -20,13 +20,19 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`Application is running on: ${await app.getUrl()}`);
 
-  const API_URL = 'https://empire-tycoon-api.onrender.com';
+  const API_URLS = [
+    'https://empire-tycoon-api.onrender.com',
+    'https://agim-tours.onrender.com/api/v1/health',
+  ];
+
   setInterval(async () => {
-    try {
-      await axios.get(API_URL);
-      console.log("API is running");
-    } catch (error) {
-      console.log("API is not running");
+    for (const url of API_URLS) {
+      try {
+        await axios.get(url);
+        console.log(`API is running: ${url}`);
+      } catch (error) {
+        console.log(`API is not running: ${url}`);
+      }
     }
   }, 10000);
 }
